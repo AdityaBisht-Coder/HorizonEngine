@@ -24,12 +24,23 @@ FetchContent_MakeAvailable(glfw)
 
 find_package(OpenGL REQUIRED)
 
+
 add_executable(Horizon
     src/main.cpp
+
+    # Core systems
+    src/Platform/Window.cpp
+
+    # Rendering systems
+    src/Renderer/Shader.cpp
+    src/Renderer/Renderer.cpp
+
+    # OpenGL loader
     external/glad/src/gl.c
 )
 
 target_include_directories(Horizon PRIVATE
+    include
     external/glad/include
 )
 
@@ -37,6 +48,50 @@ target_link_libraries(Horizon PRIVATE
     glfw
     OpenGL::GL
 )
+
+
+target_include_directories(Horizon PRIVATE
+    include
+    external/glad/include
+)
+
+target_link_libraries(Horizon PRIVATE
+    glfw
+    OpenGL::GL
+)
+# Horizon Window System Test
+add_executable(WindowTest
+    tests/WindowTest.cpp
+    src/Platform/Window.cpp
+)
+
+target_include_directories(WindowTest PRIVATE
+    include
+)
+
+target_link_libraries(WindowTest PRIVATE
+    glfw
+    OpenGL::GL
+)
+
+# Horizon Shader System Test
+add_executable(ShaderTest
+    tests/ShaderTest.cpp
+    src/Platform/Window.cpp
+    src/Renderer/Shader.cpp
+    external/glad/src/gl.c
+)
+
+target_include_directories(ShaderTest PRIVATE
+    include
+    external/glad/include
+)
+
+target_link_libraries(ShaderTest PRIVATE
+    glfw
+    OpenGL::GL
+)
+
 
 if(MSVC)
     target_compile_options(Horizon PRIVATE /W4)
