@@ -1,0 +1,25 @@
+
+# Build output
+build/
+cmake-build-*/
+out/
+
+# Visual Studio
+.vs/
+*.sln
+*.vcxproj*
+*.user
+
+# Compiled files
+*.exe
+*.obj
+*.lib
+*.dll
+*.pdb
+
+# Logs
+*.log
+
+# Operating system
+Thumbs.db
+.DS_Store
