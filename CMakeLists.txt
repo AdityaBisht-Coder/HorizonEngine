@@ -106,6 +106,21 @@ target_link_libraries(ShaderTest PRIVATE
     glfw
     OpenGL::GL
 )
+# Horizon Input System Test
+add_executable(InputTest
+    tests/InputTest.cpp
+    src/Platform/Window.cpp
+    src/Input/Input.cpp
+)
+
+target_include_directories(InputTest PRIVATE
+    include
+)
+
+target_link_libraries(InputTest PRIVATE
+    glfw
+    OpenGL::GL
+)
 
 
 if(MSVC)
