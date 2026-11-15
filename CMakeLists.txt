@@ -121,6 +121,15 @@ target_link_libraries(InputTest PRIVATE
     glfw
     OpenGL::GL
 )
+# Horizon Camera System Test
+add_executable(CameraTest
+    tests/CameraTest.cpp
+    src/Camera/Camera.cpp
+)
+
+target_include_directories(CameraTest PRIVATE
+    include
+)
 
 
 if(MSVC)
