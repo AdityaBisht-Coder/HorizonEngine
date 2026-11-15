@@ -25,19 +25,34 @@ FetchContent_MakeAvailable(glfw)
 find_package(OpenGL REQUIRED)
 
 
+
 add_executable(Horizon
     src/main.cpp
 
-    # Core systems
+    # Engine Core
+    src/Core/Engine.cpp
+
+    # Platform
     src/Platform/Window.cpp
 
-    # Rendering systems
+    # Rendering
     src/Renderer/Shader.cpp
     src/Renderer/Renderer.cpp
 
     # OpenGL loader
     external/glad/src/gl.c
 )
+
+target_include_directories(Horizon PRIVATE
+    include
+    external/glad/include
+)
+
+target_link_libraries(Horizon PRIVATE
+    glfw
+    OpenGL::GL
+)
+
 
 target_include_directories(Horizon PRIVATE
     include
