@@ -14,7 +14,7 @@ int main()
     if (!engine.initialize(
         1280,
         720,
-        "Horizon Engine 0.8"
+        "Horizon Engine 0.10"
     ))
     {
         std::cerr << "Horizon Engine failed to initialize!\n";

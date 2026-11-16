@@ -417,12 +417,15 @@ namespace horizon
 
             shader->setMat4("uMVP", mvp);
 
-            shader->setVec3(
-                "uTint",
-                0.15f,
-                0.55f,
-                1.0f
-            );
+
+const Vec3& color = object->getMaterial().color;
+
+shader->setVec3(
+    "uTint",
+    color.x,
+    color.y,
+    color.z
+);
 
             glDrawArrays(
                 GL_TRIANGLES,

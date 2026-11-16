@@ -2,6 +2,7 @@
 #pragma once
 
 #include "horizon/Scene/Transform.hpp"
+#include "horizon/Scene/Material.hpp"
 
 #include <string>
 
@@ -17,8 +18,13 @@ namespace horizon
         Transform& getTransform();
         const Transform& getTransform() const;
 
+        Material& getMaterial();
+        const Material& getMaterial() const;
+
     private:
         std::string name;
+
         Transform transform;
+        Material material;
     };
 }

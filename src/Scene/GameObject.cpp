@@ -22,4 +22,14 @@ namespace horizon
     {
         return transform;
     }
+
+    Material& GameObject::getMaterial()
+    {
+        return material;
+    }
+
+    const Material& GameObject::getMaterial() const
+    {
+        return material;
+    }
 }

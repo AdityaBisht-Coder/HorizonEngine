@@ -34,7 +34,7 @@ namespace horizon
             return true;
         }
 
-        std::cout << "Initializing Horizon Engine...\n";
+        std::cout << "Initializing Horizon Engine 0.10...\n";
 
         // 1. Create the window and OpenGL context.
         if (!window.create(width, height, title))
@@ -66,6 +66,7 @@ namespace horizon
 
         // 4. Create objects in the World.
 
+        // CENTER CUBE
         GameObject& centerCube =
             world.createObject("CenterCube");
 
@@ -75,6 +76,10 @@ namespace horizon
         centerCube.getTransform().scale =
             Vec3(1.0f, 1.0f, 1.0f);
 
+        centerCube.getMaterial().color =
+            Vec3(0.15f, 0.55f, 1.0f);
+
+        // LEFT CUBE
         GameObject& leftCube =
             world.createObject("LeftCube");
 
@@ -87,6 +92,10 @@ namespace horizon
         leftCube.getTransform().rotation =
             Vec3(0.0f, 25.0f, 0.0f);
 
+        leftCube.getMaterial().color =
+            Vec3(1.0f, 0.15f, 0.15f);
+
+        // RIGHT CUBE
         GameObject& rightCube =
             world.createObject("RightCube");
 
@@ -99,10 +108,15 @@ namespace horizon
         rightCube.getTransform().rotation =
             Vec3(0.0f, -25.0f, 0.0f);
 
+        rightCube.getMaterial().color =
+            Vec3(0.15f, 1.0f, 0.25f);
+
         std::cout
             << "World initialized with "
             << world.getObjectCount()
             << " GameObjects.\n";
+
+        std::cout << "Material System initialized!\n";
 
         // 5. Initialize renderer.
         if (!renderer.create())
@@ -114,7 +128,7 @@ namespace horizon
         initialized = true;
         running = true;
 
-        std::cout << "\nHorizon Engine initialized successfully!\n";
+        std::cout << "\nHorizon Engine 0.10 initialized successfully!\n";
 
         return true;
     }
@@ -128,7 +142,7 @@ namespace horizon
         }
 
         std::cout << "\n================================\n";
-        std::cout << "     HORIZON ENGINE 0.9\n";
+        std::cout << "     HORIZON ENGINE 0.10\n";
         std::cout << "================================\n";
         std::cout << "WASD       - Move camera\n";
         std::cout << "Mouse      - Look around\n";
