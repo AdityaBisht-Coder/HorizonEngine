@@ -1,8 +1,13 @@
+
 #pragma once
 
 #include "horizon/Shader.hpp"
 #include "horizon/Camera.hpp"
 #include "horizon/Scene/World.hpp"
+#include "horizon/Scene/Mesh.hpp"
+
+#include <memory>
+#include <unordered_map>
 
 namespace horizon
 {
@@ -27,11 +32,19 @@ namespace horizon
         void destroy();
 
     private:
-        unsigned int VAO;
-        unsigned int VBO;
+        struct MeshGPU
+        {
+            unsigned int VAO = 0;
+            unsigned int VBO = 0;
+            int vertexCount = 0;
+        };
 
         bool initialized;
-
         Shader* shader;
+
+        std::unordered_map<
+            std::shared_ptr<Mesh>,
+            MeshGPU
+        > meshCache;
     };
 }

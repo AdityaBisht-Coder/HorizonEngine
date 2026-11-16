@@ -32,4 +32,14 @@ namespace horizon
     {
         return material;
     }
+
+    void GameObject::setMesh(std::shared_ptr<Mesh> newMesh)
+    {
+        mesh = std::move(newMesh);
+    }
+
+    std::shared_ptr<Mesh> GameObject::getMesh() const
+    {
+        return mesh;
+    }
 }

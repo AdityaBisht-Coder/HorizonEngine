@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include "horizon/Window.hpp"
@@ -6,6 +5,7 @@
 #include "horizon/Camera.hpp"
 #include "horizon/Scene/World.hpp"
 #include "horizon/Renderer.hpp"
+#include "horizon/Editor/Editor.hpp"
 
 #include <string>
 
@@ -38,9 +38,11 @@ namespace horizon
         Camera camera;
         World world;
         Renderer renderer;
+        Editor editor;
 
         bool running;
         bool initialized;
+        bool imguiInitialized;
         bool previousTabPressed;
     };
 }

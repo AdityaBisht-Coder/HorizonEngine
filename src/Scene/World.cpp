@@ -1,6 +1,5 @@
 #include "horizon/Scene/World.hpp"
 
-#include <algorithm>
 #include <utility>
 
 namespace horizon
@@ -8,7 +7,6 @@ namespace horizon
     GameObject& World::createObject(const std::string& name)
     {
         auto object = std::make_unique<GameObject>(name);
-
         GameObject& reference = *object;
 
         objects.push_back(std::move(object));
@@ -18,21 +16,20 @@ namespace horizon
 
     bool World::removeObject(const std::string& name)
     {
-        auto oldSize = objects.size();
+        // Remove only the first matching object. This keeps the operation
+        // predictable even if a project contains duplicate object names.
+        for (auto iterator = objects.begin();
+             iterator != objects.end();
+             ++iterator)
+        {
+            if (*iterator && (*iterator)->getName() == name)
+            {
+                objects.erase(iterator);
+                return true;
+            }
+        }
 
-        objects.erase(
-            std::remove_if(
-                objects.begin(),
-                objects.end(),
-                [&name](const std::unique_ptr<GameObject>& object)
-                {
-                    return object->getName() == name;
-                }
-            ),
-            objects.end()
-        );
-
-        return objects.size() != oldSize;
+        return false;
     }
 
     void World::clear()

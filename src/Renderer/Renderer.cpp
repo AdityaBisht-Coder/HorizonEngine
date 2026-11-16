@@ -202,9 +202,7 @@ namespace
 namespace horizon
 {
     Renderer::Renderer()
-        : VAO(0),
-          VBO(0),
-          initialized(false),
+        : initialized(false),
           shader(nullptr)
     {
     }
@@ -258,84 +256,6 @@ namespace horizon
 
             return false;
         }
-
-        const float vertices[] =
-        {
-            // Front
-            -0.5f, -0.5f,  0.5f,
-             0.5f, -0.5f,  0.5f,
-             0.5f,  0.5f,  0.5f,
-             0.5f,  0.5f,  0.5f,
-            -0.5f,  0.5f,  0.5f,
-            -0.5f, -0.5f,  0.5f,
-
-            // Back
-             0.5f, -0.5f, -0.5f,
-            -0.5f, -0.5f, -0.5f,
-            -0.5f,  0.5f, -0.5f,
-            -0.5f,  0.5f, -0.5f,
-             0.5f,  0.5f, -0.5f,
-             0.5f, -0.5f, -0.5f,
-
-            // Left
-            -0.5f, -0.5f, -0.5f,
-            -0.5f, -0.5f,  0.5f,
-            -0.5f,  0.5f,  0.5f,
-            -0.5f,  0.5f,  0.5f,
-            -0.5f,  0.5f, -0.5f,
-            -0.5f, -0.5f, -0.5f,
-
-            // Right
-             0.5f, -0.5f,  0.5f,
-             0.5f, -0.5f, -0.5f,
-             0.5f,  0.5f, -0.5f,
-             0.5f,  0.5f, -0.5f,
-             0.5f,  0.5f,  0.5f,
-             0.5f, -0.5f,  0.5f,
-
-            // Top
-            -0.5f,  0.5f,  0.5f,
-             0.5f,  0.5f,  0.5f,
-             0.5f,  0.5f, -0.5f,
-             0.5f,  0.5f, -0.5f,
-            -0.5f,  0.5f, -0.5f,
-            -0.5f,  0.5f,  0.5f,
-
-            // Bottom
-            -0.5f, -0.5f, -0.5f,
-             0.5f, -0.5f, -0.5f,
-             0.5f, -0.5f,  0.5f,
-             0.5f, -0.5f,  0.5f,
-            -0.5f, -0.5f,  0.5f,
-            -0.5f, -0.5f, -0.5f
-        };
-
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
-
-        glBindVertexArray(VAO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-        glBufferData(
-            GL_ARRAY_BUFFER,
-            sizeof(vertices),
-            vertices,
-            GL_STATIC_DRAW
-        );
-
-        glVertexAttribPointer(
-            0,
-            3,
-            GL_FLOAT,
-            GL_FALSE,
-            3 * sizeof(float),
-            nullptr
-        );
-
-        glEnableVertexAttribArray(0);
-
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
 
         glEnable(GL_DEPTH_TEST);
 
@@ -394,9 +314,7 @@ namespace horizon
 
         shader->use();
 
-        glBindVertexArray(VAO);
-
-        // Draw every object in the World.
+        // Draw every GameObject in the World.
         for (const auto& object : world.getObjects())
         {
             if (!object)
@@ -404,6 +322,71 @@ namespace horizon
                 continue;
             }
 
+            // Get the object's Mesh.
+            std::shared_ptr<Mesh> mesh = object->getMesh();
+
+            if (!mesh || mesh->getVertexCount() == 0)
+            {
+                continue;
+            }
+
+            // Find an existing GPU copy of this Mesh.
+            auto gpuIterator = meshCache.find(mesh);
+
+            // Upload the Mesh only if it isn't cached.
+            if (gpuIterator == meshCache.end())
+            {
+                MeshGPU gpuMesh;
+
+                glGenVertexArrays(1, &gpuMesh.VAO);
+                glGenBuffers(1, &gpuMesh.VBO);
+
+                glBindVertexArray(gpuMesh.VAO);
+
+                glBindBuffer(GL_ARRAY_BUFFER, gpuMesh.VBO);
+
+                const auto& vertices = mesh->getVertices();
+
+                glBufferData(
+                    GL_ARRAY_BUFFER,
+                    static_cast<GLsizeiptr>(
+                        vertices.size() * sizeof(float)
+                    ),
+                    vertices.data(),
+                    GL_STATIC_DRAW
+                );
+
+                glVertexAttribPointer(
+                    0,
+                    3,
+                    GL_FLOAT,
+                    GL_FALSE,
+                    3 * sizeof(float),
+                    nullptr
+                );
+
+                glEnableVertexAttribArray(0);
+
+                glBindBuffer(GL_ARRAY_BUFFER, 0);
+                glBindVertexArray(0);
+
+                gpuMesh.vertexCount =
+                    static_cast<int>(mesh->getVertexCount());
+
+                gpuIterator = meshCache.emplace(
+                    mesh,
+                    gpuMesh
+                ).first;
+
+                std::cout
+                    << "GPU Mesh uploaded: "
+                    << gpuMesh.vertexCount
+                    << " vertices.\n";
+            }
+
+            const MeshGPU& gpuMesh = gpuIterator->second;
+
+            // Calculate the object's model matrix.
             Matrix4 model{};
             Matrix4 mvp{};
 
@@ -417,20 +400,23 @@ namespace horizon
 
             shader->setMat4("uMVP", mvp);
 
+            // Apply this object's Material color.
+            const Vec3& color = object->getMaterial().color;
 
-const Vec3& color = object->getMaterial().color;
+            shader->setVec3(
+                "uTint",
+                color.x,
+                color.y,
+                color.z
+            );
 
-shader->setVec3(
-    "uTint",
-    color.x,
-    color.y,
-    color.z
-);
+            // Draw the Mesh.
+            glBindVertexArray(gpuMesh.VAO);
 
             glDrawArrays(
                 GL_TRIANGLES,
                 0,
-                36
+                gpuMesh.vertexCount
             );
         }
 
@@ -439,17 +425,23 @@ shader->setVec3(
 
     void Renderer::destroy()
     {
-        if (VBO != 0)
+        // Release cached GPU Meshes.
+        for (auto& entry : meshCache)
         {
-            glDeleteBuffers(1, &VBO);
-            VBO = 0;
+            MeshGPU& gpuMesh = entry.second;
+
+            if (gpuMesh.VBO != 0)
+            {
+                glDeleteBuffers(1, &gpuMesh.VBO);
+            }
+
+            if (gpuMesh.VAO != 0)
+            {
+                glDeleteVertexArrays(1, &gpuMesh.VAO);
+            }
         }
 
-        if (VAO != 0)
-        {
-            glDeleteVertexArrays(1, &VAO);
-            VAO = 0;
-        }
+        meshCache.clear();
 
         delete shader;
         shader = nullptr;

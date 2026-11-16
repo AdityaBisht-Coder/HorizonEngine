@@ -1,13 +1,16 @@
-
 cmake_minimum_required(VERSION 3.20)
 
-project(HorizonEngine VERSION 0.8.0 LANGUAGES C CXX)
+project(HorizonEngine VERSION 0.13.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(FetchContent)
+
+# =====================================
+# GLFW
+# =====================================
 
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -25,6 +28,42 @@ FetchContent_MakeAvailable(glfw)
 find_package(OpenGL REQUIRED)
 
 # =====================================
+# DEAR IMGUI
+# =====================================
+
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG v1.91.9b
+)
+
+FetchContent_GetProperties(imgui)
+
+if(NOT imgui_POPULATED)
+    FetchContent_Populate(imgui)
+endif()
+
+add_library(imgui STATIC
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+)
+
+target_include_directories(imgui PUBLIC
+    ${imgui_SOURCE_DIR}
+    ${imgui_SOURCE_DIR}/backends
+)
+
+target_link_libraries(imgui PUBLIC
+    glfw
+    OpenGL::GL
+)
+
+# =====================================
 # HORIZON ENGINE
 # =====================================
 
@@ -33,6 +72,9 @@ add_executable(Horizon
 
     # Engine Core
     src/Core/Engine.cpp
+
+    # Editor
+    src/Editor/Editor.cpp
 
     # Platform
     src/Platform/Window.cpp
@@ -49,12 +91,12 @@ add_executable(Horizon
 
     # OpenGL loader
     external/glad/src/gl.c
+
+    # Scene System
     src/Scene/Transform.cpp
     src/Scene/GameObject.cpp
     src/Scene/World.cpp
-
-
-
+    src/Scene/Mesh.cpp
 )
 
 target_include_directories(Horizon PRIVATE
@@ -65,6 +107,7 @@ target_include_directories(Horizon PRIVATE
 target_link_libraries(Horizon PRIVATE
     glfw
     OpenGL::GL
+    imgui
 )
 
 if(MSVC)
@@ -142,4 +185,8 @@ target_include_directories(CameraTest PRIVATE
     include
 )
 
-message(STATUS "Horizon Engine 0.8 configuration complete!")
+# =====================================
+# CONFIGURATION COMPLETE
+# =====================================
+
+message(STATUS "Horizon Engine 0.13 configuration complete!")

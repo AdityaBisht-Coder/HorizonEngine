@@ -3,8 +3,10 @@
 
 #include "horizon/Scene/Transform.hpp"
 #include "horizon/Scene/Material.hpp"
+#include "horizon/Scene/Mesh.hpp"
 
 #include <string>
+#include <memory>
 
 namespace horizon
 {
@@ -21,10 +23,16 @@ namespace horizon
         Material& getMaterial();
         const Material& getMaterial() const;
 
+        void setMesh(std::shared_ptr<Mesh> mesh);
+
+        std::shared_ptr<Mesh> getMesh() const;
+
     private:
         std::string name;
 
         Transform transform;
         Material material;
+
+        std::shared_ptr<Mesh> mesh;
     };
 }
