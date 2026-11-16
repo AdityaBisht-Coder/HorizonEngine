@@ -1,8 +1,8 @@
-
 #pragma once
 
 #include "horizon/Shader.hpp"
 #include "horizon/Camera.hpp"
+#include "horizon/Scene/World.hpp"
 
 namespace horizon
 {
@@ -17,7 +17,12 @@ namespace horizon
 
         bool create();
 
-        void render(const Camera& camera, int width, int height);
+        void render(
+            const Camera& camera,
+            const World& world,
+            int width,
+            int height
+        );
 
         void destroy();
 

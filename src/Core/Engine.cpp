@@ -64,7 +64,47 @@ namespace horizon
         // Start with the mouse captured.
         input.setCursorCaptured(true);
 
-        // 4. Initialize renderer.
+        // 4. Create objects in the World.
+
+        GameObject& centerCube =
+            world.createObject("CenterCube");
+
+        centerCube.getTransform().position =
+            Vec3(0.0f, 0.0f, 0.0f);
+
+        centerCube.getTransform().scale =
+            Vec3(1.0f, 1.0f, 1.0f);
+
+        GameObject& leftCube =
+            world.createObject("LeftCube");
+
+        leftCube.getTransform().position =
+            Vec3(-1.8f, 0.0f, 0.0f);
+
+        leftCube.getTransform().scale =
+            Vec3(0.8f, 0.8f, 0.8f);
+
+        leftCube.getTransform().rotation =
+            Vec3(0.0f, 25.0f, 0.0f);
+
+        GameObject& rightCube =
+            world.createObject("RightCube");
+
+        rightCube.getTransform().position =
+            Vec3(1.8f, 0.0f, 0.0f);
+
+        rightCube.getTransform().scale =
+            Vec3(1.2f, 1.2f, 1.2f);
+
+        rightCube.getTransform().rotation =
+            Vec3(0.0f, -25.0f, 0.0f);
+
+        std::cout
+            << "World initialized with "
+            << world.getObjectCount()
+            << " GameObjects.\n";
+
+        // 5. Initialize renderer.
         if (!renderer.create())
         {
             std::cerr << "Engine: Renderer initialization failed!\n";
@@ -88,7 +128,7 @@ namespace horizon
         }
 
         std::cout << "\n================================\n";
-        std::cout << "     HORIZON ENGINE 0.8\n";
+        std::cout << "     HORIZON ENGINE 0.9\n";
         std::cout << "================================\n";
         std::cout << "WASD       - Move camera\n";
         std::cout << "Mouse      - Look around\n";
@@ -192,9 +232,10 @@ namespace horizon
                 camera.processMouseScroll(scroll);
             }
 
-            // 8. Render the scene.
+            // 8. Render all objects in the World.
             renderer.render(
                 camera,
+                world,
                 window.width(),
                 window.height()
             );
@@ -219,8 +260,11 @@ namespace horizon
 
         running = false;
 
-        // Release OpenGL resources before the context is destroyed.
+        // Release OpenGL resources before destroying the context.
         renderer.destroy();
+
+        // Remove all objects from the World.
+        world.clear();
 
         initialized = false;
 

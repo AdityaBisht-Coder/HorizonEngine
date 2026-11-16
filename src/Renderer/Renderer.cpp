@@ -78,6 +78,125 @@ namespace
             -(2.0f * farPlane * nearPlane) /
             (farPlane - nearPlane);
     }
+
+    void makeTranslation(
+        float x,
+        float y,
+        float z,
+        Matrix4 result)
+    {
+        identity(result);
+
+        result[12] = x;
+        result[13] = y;
+        result[14] = z;
+    }
+
+    void makeScale(
+        float x,
+        float y,
+        float z,
+        Matrix4 result)
+    {
+        identity(result);
+
+        result[0] = x;
+        result[5] = y;
+        result[10] = z;
+    }
+
+    void makeRotationX(float angle, Matrix4 result)
+    {
+        identity(result);
+
+        const float c = std::cos(angle);
+        const float s = std::sin(angle);
+
+        result[5] = c;
+        result[6] = s;
+        result[9] = -s;
+        result[10] = c;
+    }
+
+    void makeRotationY(float angle, Matrix4 result)
+    {
+        identity(result);
+
+        const float c = std::cos(angle);
+        const float s = std::sin(angle);
+
+        result[0] = c;
+        result[2] = -s;
+        result[8] = s;
+        result[10] = c;
+    }
+
+    void makeRotationZ(float angle, Matrix4 result)
+    {
+        identity(result);
+
+        const float c = std::cos(angle);
+        const float s = std::sin(angle);
+
+        result[0] = c;
+        result[1] = s;
+        result[4] = -s;
+        result[5] = c;
+    }
+
+    void makeModelMatrix(
+        const horizon::Transform& transform,
+        Matrix4 result)
+    {
+        Matrix4 translation{};
+        Matrix4 rotationX{};
+        Matrix4 rotationY{};
+        Matrix4 rotationZ{};
+        Matrix4 scale{};
+
+        Matrix4 temporary1{};
+        Matrix4 temporary2{};
+        Matrix4 temporary3{};
+
+        constexpr float degreesToRadians = PI / 180.0f;
+
+        makeTranslation(
+            transform.position.x,
+            transform.position.y,
+            transform.position.z,
+            translation
+        );
+
+        makeRotationX(
+            transform.rotation.x * degreesToRadians,
+            rotationX
+        );
+
+        makeRotationY(
+            transform.rotation.y * degreesToRadians,
+            rotationY
+        );
+
+        makeRotationZ(
+            transform.rotation.z * degreesToRadians,
+            rotationZ
+        );
+
+        makeScale(
+            transform.scale.x,
+            transform.scale.y,
+            transform.scale.z,
+            scale
+        );
+
+        // Model = Translation * RotationZ * RotationY
+        //         * RotationX * Scale.
+
+        multiply(rotationX, scale, temporary1);
+        multiply(rotationY, temporary1, temporary2);
+        multiply(rotationZ, temporary2, temporary3);
+        multiply(translation, temporary3, result);
+    }
 }
 
 namespace horizon
@@ -230,6 +349,7 @@ namespace horizon
 
     void Renderer::render(
         const Camera& camera,
+        const World& world,
         int width,
         int height)
     {
@@ -255,18 +375,11 @@ namespace horizon
             GL_DEPTH_BUFFER_BIT
         );
 
-        Matrix4 model{};
         Matrix4 projection{};
-        Matrix4 temporary{};
-        Matrix4 mvp{};
+        Matrix4 viewProjection{};
 
-        // The cube stays fixed at the world origin.
-        identity(model);
-
-        // Camera supplies the view matrix.
         const float* view = camera.getViewMatrix();
 
-        // Camera zoom controls the field of view.
         makePerspective(
             camera.getZoom() * PI / 180.0f,
             static_cast<float>(width) /
@@ -276,28 +389,47 @@ namespace horizon
             projection
         );
 
-        // MVP = Projection * View * Model.
-        multiply(view, model, temporary);
-        multiply(projection, temporary, mvp);
+        // ViewProjection = Projection * View.
+        multiply(projection, view, viewProjection);
 
         shader->use();
 
-        shader->setMat4("uMVP", mvp);
-
-        shader->setVec3(
-            "uTint",
-            0.15f,
-            0.55f,
-            1.0f
-        );
-
         glBindVertexArray(VAO);
 
-        glDrawArrays(
-            GL_TRIANGLES,
-            0,
-            36
-        );
+        // Draw every object in the World.
+        for (const auto& object : world.getObjects())
+        {
+            if (!object)
+            {
+                continue;
+            }
+
+            Matrix4 model{};
+            Matrix4 mvp{};
+
+            makeModelMatrix(
+                object->getTransform(),
+                model
+            );
+
+            // MVP = Projection * View * Model.
+            multiply(viewProjection, model, mvp);
+
+            shader->setMat4("uMVP", mvp);
+
+            shader->setVec3(
+                "uTint",
+                0.15f,
+                0.55f,
+                1.0f
+            );
+
+            glDrawArrays(
+                GL_TRIANGLES,
+                0,
+                36
+            );
+        }
 
         glBindVertexArray(0);
     }

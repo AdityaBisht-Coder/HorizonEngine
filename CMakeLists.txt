@@ -49,6 +49,12 @@ add_executable(Horizon
 
     # OpenGL loader
     external/glad/src/gl.c
+    src/Scene/Transform.cpp
+    src/Scene/GameObject.cpp
+    src/Scene/World.cpp
+
+
+
 )
 
 target_include_directories(Horizon PRIVATE

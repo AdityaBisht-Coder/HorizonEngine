@@ -4,6 +4,7 @@
 #include "horizon/Window.hpp"
 #include "horizon/Input.hpp"
 #include "horizon/Camera.hpp"
+#include "horizon/Scene/World.hpp"
 #include "horizon/Renderer.hpp"
 
 #include <string>
@@ -35,6 +36,7 @@ namespace horizon
         Window window;
         Input input;
         Camera camera;
+        World world;
         Renderer renderer;
 
         bool running;
