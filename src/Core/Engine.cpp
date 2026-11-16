@@ -6,6 +6,7 @@
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
+#include <algorithm>
 #include <chrono>
 #include <iostream>
 
@@ -13,7 +14,8 @@ namespace horizon
 {
     Engine::Engine()
         : running(false),
-          initialized(false)
+          initialized(false),
+          previousTabPressed(false)
     {
     }
 
@@ -34,7 +36,7 @@ namespace horizon
 
         std::cout << "Initializing Horizon Engine...\n";
 
-        // 1. Initialize the window.
+        // 1. Create the window and OpenGL context.
         if (!window.create(width, height, title))
         {
             std::cerr << "Engine: Window initialization failed!\n";
@@ -52,7 +54,17 @@ namespace horizon
                   << glGetString(GL_VERSION)
                   << '\n';
 
-        // 3. Initialize the renderer.
+        // 3. Initialize input.
+        if (!input.initialize(window.nativeHandle()))
+        {
+            std::cerr << "Engine: Input initialization failed!\n";
+            return false;
+        }
+
+        // Start with the mouse captured.
+        input.setCursorCaptured(true);
+
+        // 4. Initialize renderer.
         if (!renderer.create())
         {
             std::cerr << "Engine: Renderer initialization failed!\n";
@@ -62,7 +74,7 @@ namespace horizon
         initialized = true;
         running = true;
 
-        std::cout << "Horizon Engine initialized successfully!\n";
+        std::cout << "\nHorizon Engine initialized successfully!\n";
 
         return true;
     }
@@ -75,45 +87,123 @@ namespace horizon
             return;
         }
 
-        std::cout << "Horizon Engine main loop started!\n";
-        std::cout << "Press ESC to exit.\n";
+        std::cout << "\n================================\n";
+        std::cout << "     HORIZON ENGINE 0.8\n";
+        std::cout << "================================\n";
+        std::cout << "WASD       - Move camera\n";
+        std::cout << "Mouse      - Look around\n";
+        std::cout << "Scroll     - Adjust FOV\n";
+        std::cout << "TAB        - Capture/release mouse\n";
+        std::cout << "ESC        - Exit\n";
+        std::cout << "================================\n\n";
 
-        const auto startTime = std::chrono::steady_clock::now();
+        using Clock = std::chrono::steady_clock;
+
+        auto previousFrameTime = Clock::now();
 
         while (running && !window.shouldClose())
         {
-            // Process operating system events.
-            window.pollEvents();
+            // Calculate frame delta time.
+            const auto currentFrameTime = Clock::now();
 
-            // Temporary ESC input handling.
-            if (glfwGetKey(
-                window.nativeHandle(),
-                GLFW_KEY_ESCAPE
-            ) == GLFW_PRESS)
-            {
-                running = false;
-            }
-
-            const auto currentTime =
-                std::chrono::steady_clock::now();
-
-            const float elapsedTime =
+            float deltaTime =
                 std::chrono::duration<float>(
-                    currentTime - startTime
+                    currentFrameTime - previousFrameTime
                 ).count();
 
-            // Render the current frame.
+            previousFrameTime = currentFrameTime;
+
+            // Avoid large movement after a pause or window drag.
+            deltaTime = std::min(deltaTime, 0.1f);
+
+            // 1. Process window events.
+            window.pollEvents();
+
+            // 2. Update input state.
+            input.update();
+
+            // 3. Handle exit.
+            if (input.isKeyPressed(GLFW_KEY_ESCAPE))
+            {
+                running = false;
+                break;
+            }
+
+            // 4. Toggle mouse capture with TAB.
+            const bool tabPressed =
+                input.isKeyPressed(GLFW_KEY_TAB);
+
+            if (tabPressed && !previousTabPressed)
+            {
+                input.setCursorCaptured(
+                    !input.isCursorCaptured()
+                );
+            }
+
+            previousTabPressed = tabPressed;
+
+            // 5. Camera movement.
+            if (input.isKeyPressed(GLFW_KEY_W))
+            {
+                camera.processKeyboard(
+                    CameraDirection::Forward,
+                    deltaTime
+                );
+            }
+
+            if (input.isKeyPressed(GLFW_KEY_S))
+            {
+                camera.processKeyboard(
+                    CameraDirection::Backward,
+                    deltaTime
+                );
+            }
+
+            if (input.isKeyPressed(GLFW_KEY_A))
+            {
+                camera.processKeyboard(
+                    CameraDirection::Left,
+                    deltaTime
+                );
+            }
+
+            if (input.isKeyPressed(GLFW_KEY_D))
+            {
+                camera.processKeyboard(
+                    CameraDirection::Right,
+                    deltaTime
+                );
+            }
+
+            // 6. Mouse look.
+            if (input.isCursorCaptured())
+            {
+                camera.processMouseMovement(
+                    input.mouseDeltaX(),
+                    input.mouseDeltaY()
+                );
+            }
+
+            // 7. Camera zoom.
+            const float scroll = input.consumeScrollDeltaY();
+
+            if (scroll != 0.0f)
+            {
+                camera.processMouseScroll(scroll);
+            }
+
+            // 8. Render the scene.
             renderer.render(
-                elapsedTime,
+                camera,
                 window.width(),
                 window.height()
             );
 
-            // Present the rendered frame.
+            // 9. Present the frame.
             window.swapBuffers();
         }
 
-        std::cout << "Horizon Engine main loop stopped.\n";
+        std::cout << "\nHorizon Engine main loop stopped.\n";
 
         shutdown();
     }
@@ -129,7 +219,7 @@ namespace horizon
 
         running = false;
 
-        // Release GPU resources while the OpenGL context exists.
+        // Release OpenGL resources before the context is destroyed.
         renderer.destroy();
 
         initialized = false;

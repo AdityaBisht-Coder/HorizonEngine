@@ -1,7 +1,7 @@
 
 cmake_minimum_required(VERSION 3.20)
 
-project(HorizonEngine VERSION 0.4.0 LANGUAGES C CXX)
+project(HorizonEngine VERSION 0.8.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -24,7 +24,9 @@ FetchContent_MakeAvailable(glfw)
 
 find_package(OpenGL REQUIRED)
 
-
+# =====================================
+# HORIZON ENGINE
+# =====================================
 
 add_executable(Horizon
     src/main.cpp
@@ -34,6 +36,12 @@ add_executable(Horizon
 
     # Platform
     src/Platform/Window.cpp
+
+    # Input
+    src/Input/Input.cpp
+
+    # Camera
+    src/Camera/Camera.cpp
 
     # Rendering
     src/Renderer/Shader.cpp
@@ -53,28 +61,14 @@ target_link_libraries(Horizon PRIVATE
     OpenGL::GL
 )
 
+if(MSVC)
+    target_compile_options(Horizon PRIVATE /W4)
+endif()
 
-target_include_directories(Horizon PRIVATE
-    include
-    external/glad/include
-)
+# =====================================
+# WINDOW TEST
+# =====================================
 
-target_link_libraries(Horizon PRIVATE
-    glfw
-    OpenGL::GL
-)
-
-
-target_include_directories(Horizon PRIVATE
-    include
-    external/glad/include
-)
-
-target_link_libraries(Horizon PRIVATE
-    glfw
-    OpenGL::GL
-)
-# Horizon Window System Test
 add_executable(WindowTest
     tests/WindowTest.cpp
     src/Platform/Window.cpp
@@ -89,7 +83,10 @@ target_link_libraries(WindowTest PRIVATE
     OpenGL::GL
 )
 
-# Horizon Shader System Test
+# =====================================
+# SHADER TEST
+# =====================================
+
 add_executable(ShaderTest
     tests/ShaderTest.cpp
     src/Platform/Window.cpp
@@ -106,7 +103,11 @@ target_link_libraries(ShaderTest PRIVATE
     glfw
     OpenGL::GL
 )
-# Horizon Input System Test
+
+# =====================================
+# INPUT TEST
+# =====================================
+
 add_executable(InputTest
     tests/InputTest.cpp
     src/Platform/Window.cpp
@@ -121,7 +122,11 @@ target_link_libraries(InputTest PRIVATE
     glfw
     OpenGL::GL
 )
-# Horizon Camera System Test
+
+# =====================================
+# CAMERA TEST
+# =====================================
+
 add_executable(CameraTest
     tests/CameraTest.cpp
     src/Camera/Camera.cpp
@@ -131,9 +136,4 @@ target_include_directories(CameraTest PRIVATE
     include
 )
 
-
-if(MSVC)
-    target_compile_options(Horizon PRIVATE /W4)
-endif()
-
-message(STATUS "Horizon Engine 0.4 configuration complete!")
+message(STATUS "Horizon Engine 0.8 configuration complete!")

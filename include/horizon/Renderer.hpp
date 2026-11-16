@@ -1,6 +1,9 @@
 
 #pragma once
+
 #include "horizon/Shader.hpp"
+#include "horizon/Camera.hpp"
+
 namespace horizon
 {
     class Renderer
@@ -14,7 +17,7 @@ namespace horizon
 
         bool create();
 
-        void render(float timeSeconds, int width, int height);
+        void render(const Camera& camera, int width, int height);
 
         void destroy();
 

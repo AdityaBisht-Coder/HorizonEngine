@@ -9,6 +9,7 @@ namespace horizon
     {
     public:
         Input();
+        ~Input();
 
         bool initialize(GLFWwindow* window);
 
@@ -20,10 +21,19 @@ namespace horizon
         float mouseDeltaX() const;
         float mouseDeltaY() const;
 
+        // Returns accumulated scroll movement and resets it.
+        float consumeScrollDeltaY();
+
         void setCursorCaptured(bool captured);
         bool isCursorCaptured() const;
 
     private:
+        static void scrollCallback(
+            GLFWwindow* window,
+            double xOffset,
+            double yOffset
+        );
+
         GLFWwindow* window;
 
         double previousMouseX;
@@ -31,6 +41,7 @@ namespace horizon
 
         float deltaX;
         float deltaY;
+        float scrollDeltaY;
 
         bool firstMouse;
         bool cursorCaptured;

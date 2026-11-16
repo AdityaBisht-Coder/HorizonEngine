@@ -2,6 +2,8 @@
 #pragma once
 
 #include "horizon/Window.hpp"
+#include "horizon/Input.hpp"
+#include "horizon/Camera.hpp"
 #include "horizon/Renderer.hpp"
 
 #include <string>
@@ -29,12 +31,14 @@ namespace horizon
         bool isRunning() const;
 
     private:
-        // Declaration order matters:
-        // Renderer is destroyed before Window.
+        // Declaration order ensures correct reverse destruction.
         Window window;
+        Input input;
+        Camera camera;
         Renderer renderer;
 
         bool running;
         bool initialized;
+        bool previousTabPressed;
     };
 }

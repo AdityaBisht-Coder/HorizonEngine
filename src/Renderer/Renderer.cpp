@@ -12,7 +12,6 @@ namespace
 
     using Matrix4 = float[16];
 
-    // Create an identity matrix.
     void identity(Matrix4 result)
     {
         for (int i = 0; i < 16; ++i)
@@ -26,7 +25,6 @@ namespace
         result[15] = 1.0f;
     }
 
-    // Multiply two column-major 4x4 matrices.
     void multiply(
         const float* a,
         const float* b,
@@ -53,49 +51,6 @@ namespace
         }
     }
 
-    // Rotation around the X axis.
-    void makeRotationX(float angle, Matrix4 result)
-    {
-        identity(result);
-
-        const float c = std::cos(angle);
-        const float s = std::sin(angle);
-
-        result[5] = c;
-        result[6] = s;
-        result[9] = -s;
-        result[10] = c;
-    }
-
-    // Rotation around the Y axis.
-    void makeRotationY(float angle, Matrix4 result)
-    {
-        identity(result);
-
-        const float c = std::cos(angle);
-        const float s = std::sin(angle);
-
-        result[0] = c;
-        result[2] = -s;
-        result[8] = s;
-        result[10] = c;
-    }
-
-    // Translation matrix.
-    void makeTranslation(
-        float x,
-        float y,
-        float z,
-        Matrix4 result)
-    {
-        identity(result);
-
-        result[12] = x;
-        result[13] = y;
-        result[14] = z;
-    }
-
-    // Perspective projection matrix.
     void makePerspective(
         float fov,
         float aspect,
@@ -140,7 +95,6 @@ namespace horizon
         destroy();
     }
 
-    // Initialize the renderer.
     bool Renderer::create()
     {
         if (initialized)
@@ -148,7 +102,6 @@ namespace horizon
             return true;
         }
 
-        // Vertex shader.
         const std::string vertexShaderSource = R"(
             #version 330 core
 
@@ -162,7 +115,6 @@ namespace horizon
             }
         )";
 
-        // Fragment shader.
         const std::string fragmentShaderSource = R"(
             #version 330 core
 
@@ -176,7 +128,6 @@ namespace horizon
             }
         )";
 
-        // Create the shader program.
         shader = new Shader();
 
         if (!shader->create(
@@ -189,10 +140,9 @@ namespace horizon
             return false;
         }
 
-        // Cube geometry: 36 vertices, 6 faces.
         const float vertices[] =
         {
-            // Front face
+            // Front
             -0.5f, -0.5f,  0.5f,
              0.5f, -0.5f,  0.5f,
              0.5f,  0.5f,  0.5f,
@@ -200,7 +150,7 @@ namespace horizon
             -0.5f,  0.5f,  0.5f,
             -0.5f, -0.5f,  0.5f,
 
-            // Back face
+            // Back
              0.5f, -0.5f, -0.5f,
             -0.5f, -0.5f, -0.5f,
             -0.5f,  0.5f, -0.5f,
@@ -208,7 +158,7 @@ namespace horizon
              0.5f,  0.5f, -0.5f,
              0.5f, -0.5f, -0.5f,
 
-            // Left face
+            // Left
             -0.5f, -0.5f, -0.5f,
             -0.5f, -0.5f,  0.5f,
             -0.5f,  0.5f,  0.5f,
@@ -216,7 +166,7 @@ namespace horizon
             -0.5f,  0.5f, -0.5f,
             -0.5f, -0.5f, -0.5f,
 
-            // Right face
+            // Right
              0.5f, -0.5f,  0.5f,
              0.5f, -0.5f, -0.5f,
              0.5f,  0.5f, -0.5f,
@@ -224,7 +174,7 @@ namespace horizon
              0.5f,  0.5f,  0.5f,
              0.5f, -0.5f,  0.5f,
 
-            // Top face
+            // Top
             -0.5f,  0.5f,  0.5f,
              0.5f,  0.5f,  0.5f,
              0.5f,  0.5f, -0.5f,
@@ -232,7 +182,7 @@ namespace horizon
             -0.5f,  0.5f, -0.5f,
             -0.5f,  0.5f,  0.5f,
 
-            // Bottom face
+            // Bottom
             -0.5f, -0.5f, -0.5f,
              0.5f, -0.5f, -0.5f,
              0.5f, -0.5f,  0.5f,
@@ -241,12 +191,10 @@ namespace horizon
             -0.5f, -0.5f, -0.5f
         };
 
-        // Create GPU vertex resources.
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
 
         glBindVertexArray(VAO);
-
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
         glBufferData(
@@ -256,7 +204,6 @@ namespace horizon
             GL_STATIC_DRAW
         );
 
-        // Position attribute.
         glVertexAttribPointer(
             0,
             3,
@@ -271,7 +218,6 @@ namespace horizon
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
 
-        // Enable depth testing.
         glEnable(GL_DEPTH_TEST);
 
         initialized = true;
@@ -282,13 +228,15 @@ namespace horizon
         return true;
     }
 
-    // Render the rotating cube.
     void Renderer::render(
-        float timeSeconds,
+        const Camera& camera,
         int width,
         int height)
     {
-        if (!initialized || width <= 0 || height <= 0)
+        if (!initialized ||
+            shader == nullptr ||
+            width <= 0 ||
+            height <= 0)
         {
             return;
         }
@@ -307,32 +255,20 @@ namespace horizon
             GL_DEPTH_BUFFER_BIT
         );
 
-        Matrix4 rotationX{};
-        Matrix4 rotationY{};
-        Matrix4 translation{};
         Matrix4 model{};
-        Matrix4 view{};
         Matrix4 projection{};
         Matrix4 temporary{};
         Matrix4 mvp{};
 
-        // Calculate cube rotation.
-        makeRotationX(timeSeconds * 0.7f, rotationX);
-        makeRotationY(timeSeconds, rotationY);
+        // The cube stays fixed at the world origin.
+        identity(model);
 
-        // Position cube in front of camera.
-        makeTranslation(0.0f, 0.0f, -3.0f, translation);
+        // Camera supplies the view matrix.
+        const float* view = camera.getViewMatrix();
 
-        // Model = Translation * RotationY * RotationX.
-        multiply(rotationY, rotationX, model);
-        multiply(translation, model, temporary);
-
-        // Identity camera view matrix.
-        identity(view);
-
-        // Perspective projection.
+        // Camera zoom controls the field of view.
         makePerspective(
-            45.0f * PI / 180.0f,
+            camera.getZoom() * PI / 180.0f,
             static_cast<float>(width) /
                 static_cast<float>(height),
             0.1f,
@@ -341,14 +277,13 @@ namespace horizon
         );
 
         // MVP = Projection * View * Model.
-        multiply(view, temporary, model);
-        multiply(projection, model, mvp);
+        multiply(view, model, temporary);
+        multiply(projection, temporary, mvp);
 
-        // Activate shader.
         shader->use();
 
-        // Send uniforms to GPU.
         shader->setMat4("uMVP", mvp);
+
         shader->setVec3(
             "uTint",
             0.15f,
@@ -356,7 +291,6 @@ namespace horizon
             1.0f
         );
 
-        // Draw cube.
         glBindVertexArray(VAO);
 
         glDrawArrays(
@@ -368,7 +302,6 @@ namespace horizon
         glBindVertexArray(0);
     }
 
-    // Release GPU resources.
     void Renderer::destroy()
     {
         if (VBO != 0)

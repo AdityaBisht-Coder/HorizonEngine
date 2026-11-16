@@ -12,10 +12,23 @@ namespace horizon
           previousMouseY(0.0),
           deltaX(0.0f),
           deltaY(0.0f),
+          scrollDeltaY(0.0f),
           firstMouse(true),
           cursorCaptured(false),
           initialized(false)
     {
+    }
+
+    Input::~Input()
+    {
+        if (window != nullptr)
+        {
+            if (glfwGetWindowUserPointer(window) == this)
+            {
+                glfwSetScrollCallback(window, nullptr);
+                glfwSetWindowUserPointer(window, nullptr);
+            }
+        }
     }
 
     bool Input::initialize(GLFWwindow* windowHandle)
@@ -27,11 +40,19 @@ namespace horizon
 
         window = windowHandle;
 
-        glfwGetCursorPos(window, &previousMouseX, &previousMouseY);
+        glfwGetCursorPos(
+            window,
+            &previousMouseX,
+            &previousMouseY
+        );
 
         firstMouse = true;
         deltaX = 0.0f;
         deltaY = 0.0f;
+        scrollDeltaY = 0.0f;
+
+        glfwSetWindowUserPointer(window, this);
+        glfwSetScrollCallback(window, scrollCallback);
 
         initialized = true;
 
@@ -48,7 +69,11 @@ namespace horizon
         double currentMouseX = 0.0;
         double currentMouseY = 0.0;
 
-        glfwGetCursorPos(window, &currentMouseX, &currentMouseY);
+        glfwGetCursorPos(
+            window,
+            &currentMouseX,
+            &currentMouseY
+        );
 
         if (firstMouse)
         {
@@ -61,13 +86,38 @@ namespace horizon
             currentMouseX - previousMouseX
         );
 
-        // Invert vertical movement for conventional camera controls.
         deltaY = static_cast<float>(
             previousMouseY - currentMouseY
         );
 
         previousMouseX = currentMouseX;
         previousMouseY = currentMouseY;
+    }
+
+    void Input::scrollCallback(
+        GLFWwindow* window,
+        double xOffset,
+        double yOffset
+    )
+    {
+        (void)xOffset;
+
+        Input* input = static_cast<Input*>(
+            glfwGetWindowUserPointer(window)
+        );
+
+        if (input != nullptr)
+        {
+            input->scrollDeltaY += static_cast<float>(yOffset);
+        }
+    }
+
+    float Input::consumeScrollDeltaY()
+    {
+        float result = scrollDeltaY;
+        scrollDeltaY = 0.0f;
+
+        return result;
     }
 
     bool Input::isKeyPressed(int key) const
@@ -115,8 +165,11 @@ namespace horizon
             captured ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL
         );
 
-        // Prevent a sudden camera jump after changing cursor mode.
-        glfwGetCursorPos(window, &previousMouseX, &previousMouseY);
+        glfwGetCursorPos(
+            window,
+            &previousMouseX,
+            &previousMouseY
+        );
 
         firstMouse = true;
         deltaX = 0.0f;
