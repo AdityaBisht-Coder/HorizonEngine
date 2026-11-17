@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include "horizon/Shader.hpp"
@@ -7,7 +6,7 @@
 #include "horizon/Scene/Mesh.hpp"
 
 #include <memory>
-#include <unordered_map>
+#include <map>
 
 namespace horizon
 {
@@ -40,11 +39,13 @@ namespace horizon
         };
 
         bool initialized;
-        Shader* shader;
 
-        std::unordered_map<
-            std::shared_ptr<Mesh>,
-            MeshGPU
+        std::unique_ptr<Shader> shader;
+
+        std::map<
+            std::weak_ptr<Mesh>,
+            MeshGPU,
+            std::owner_less<std::weak_ptr<Mesh>>
         > meshCache;
     };
 }

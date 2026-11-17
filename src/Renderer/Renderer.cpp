@@ -1,10 +1,10 @@
-
 #include "horizon/Renderer.hpp"
 
 #include <glad/gl.h>
 
 #include <cmath>
 #include <iostream>
+#include <memory>
 
 namespace
 {
@@ -245,15 +245,13 @@ namespace horizon
             }
         )";
 
-        shader = new Shader();
+        shader = std::make_unique<Shader>();
 
         if (!shader->create(
             vertexShaderSource,
             fragmentShaderSource))
         {
-            delete shader;
-            shader = nullptr;
-
+            shader.reset();
             return false;
         }
 
@@ -295,6 +293,36 @@ namespace horizon
             GL_DEPTH_BUFFER_BIT
         );
 
+        // Remove GPU meshes whose CPU meshes no longer exist.
+        for (auto iterator = meshCache.begin();
+             iterator != meshCache.end();)
+        {
+            if (iterator->first.expired())
+            {
+                if (iterator->second.VBO != 0)
+                {
+                    glDeleteBuffers(
+                        1,
+                        &iterator->second.VBO
+                    );
+                }
+
+                if (iterator->second.VAO != 0)
+                {
+                    glDeleteVertexArrays(
+                        1,
+                        &iterator->second.VAO
+                    );
+                }
+
+                iterator = meshCache.erase(iterator);
+            }
+            else
+            {
+                ++iterator;
+            }
+        }
+
         Matrix4 projection{};
         Matrix4 viewProjection{};
 
@@ -322,7 +350,6 @@ namespace horizon
                 continue;
             }
 
-            // Get the object's Mesh.
             std::shared_ptr<Mesh> mesh = object->getMesh();
 
             if (!mesh || mesh->getVertexCount() == 0)
@@ -330,10 +357,12 @@ namespace horizon
                 continue;
             }
 
-            // Find an existing GPU copy of this Mesh.
-            auto gpuIterator = meshCache.find(mesh);
+            // Use a weak reference as the cache key.
+            std::weak_ptr<Mesh> meshKey(mesh);
 
-            // Upload the Mesh only if it isn't cached.
+            auto gpuIterator = meshCache.find(meshKey);
+
+            // Upload the mesh only if it isn't cached.
             if (gpuIterator == meshCache.end())
             {
                 MeshGPU gpuMesh;
@@ -374,7 +403,7 @@ namespace horizon
                     static_cast<int>(mesh->getVertexCount());
 
                 gpuIterator = meshCache.emplace(
-                    mesh,
+                    meshKey,
                     gpuMesh
                 ).first;
 
@@ -386,7 +415,6 @@ namespace horizon
 
             const MeshGPU& gpuMesh = gpuIterator->second;
 
-            // Calculate the object's model matrix.
             Matrix4 model{};
             Matrix4 mvp{};
 
@@ -400,7 +428,6 @@ namespace horizon
 
             shader->setMat4("uMVP", mvp);
 
-            // Apply this object's Material color.
             const Vec3& color = object->getMaterial().color;
 
             shader->setVec3(
@@ -410,7 +437,6 @@ namespace horizon
                 color.z
             );
 
-            // Draw the Mesh.
             glBindVertexArray(gpuMesh.VAO);
 
             glDrawArrays(
@@ -425,26 +451,30 @@ namespace horizon
 
     void Renderer::destroy()
     {
-        // Release cached GPU Meshes.
+        // Release all cached GPU meshes.
         for (auto& entry : meshCache)
         {
-            MeshGPU& gpuMesh = entry.second;
-
-            if (gpuMesh.VBO != 0)
+            if (entry.second.VBO != 0)
             {
-                glDeleteBuffers(1, &gpuMesh.VBO);
+                glDeleteBuffers(
+                    1,
+                    &entry.second.VBO
+                );
             }
 
-            if (gpuMesh.VAO != 0)
+            if (entry.second.VAO != 0)
             {
-                glDeleteVertexArrays(1, &gpuMesh.VAO);
+                glDeleteVertexArrays(
+                    1,
+                    &entry.second.VAO
+                );
             }
         }
 
         meshCache.clear();
 
-        delete shader;
-        shader = nullptr;
+        // Automatically destroy the Shader object.
+        shader.reset();
 
         initialized = false;
     }
