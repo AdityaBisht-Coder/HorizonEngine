@@ -1,10 +1,12 @@
-
 #pragma once
 
 #include "horizon/Scene/World.hpp"
+#include "horizon/Scene/SceneStorage.hpp"
 
 #include <memory>
 #include <string>
+#include <vector>
+#include <filesystem>
 #include <cstdint>
 
 namespace horizon
@@ -20,11 +22,21 @@ namespace horizon
         Editor(const Editor&) = delete;
         Editor& operator=(const Editor&) = delete;
 
-        // Draws the editor UI and applies edits directly to the World.
         void render(World& world);
 
     private:
         void createCube(World& world);
+
+        void refreshSceneList();
+
+        bool saveCurrentScene(World& world, bool saveAs);
+
+        bool loadScene(
+            const std::filesystem::path& path,
+            World& world
+        );
+
+        void performPendingAction(World& world);
 
         enum class PendingSceneAction
         {
@@ -33,18 +45,23 @@ namespace horizon
             LoadScene
         };
 
-        // Stable selection using GameObject IDs.
         std::uint64_t selectedObjectId = 0;
 
-        // Shared cube mesh used by editor-created objects.
         std::shared_ptr<Mesh> cubeMesh;
 
-        // Scene management.
-        char scenePath[512] = "scene.hscene";
+        SceneStorage sceneStorage;
+
+        std::vector<std::filesystem::path> savedScenes;
+
+        std::filesystem::path selectedScenePath;
+        std::filesystem::path pendingScenePath;
 
         std::string currentScenePath;
         std::string sceneStatusMessage;
 
+        char sceneName[128] = "Untitled";
+
+        bool sceneStorageInitialized = false;
         bool sceneDirty = false;
 
         PendingSceneAction pendingSceneAction =

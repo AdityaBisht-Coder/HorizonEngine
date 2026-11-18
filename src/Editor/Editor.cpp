@@ -8,16 +8,260 @@
 #include "imgui.h"
 
 #include <string>
+#include <filesystem>
+#include <cstdio>
 
 namespace horizon
 {
+    // =============================================================
+    // SCENE BROWSER
+    // =============================================================
+
+    void Editor::refreshSceneList()
+    {
+        std::string errorMessage;
+
+        if (!sceneStorage.ensureDirectories(&errorMessage))
+        {
+            sceneStatusMessage =
+                "Storage error: " + errorMessage;
+            return;
+        }
+
+        savedScenes =
+            sceneStorage.listScenes(&errorMessage);
+
+        if (!errorMessage.empty())
+        {
+            sceneStatusMessage =
+                "Scene list error: " + errorMessage;
+        }
+
+        // Preserve selected scene if it still exists.
+        bool selectionStillExists = false;
+
+        for (const auto& path : savedScenes)
+        {
+            if (path == selectedScenePath)
+            {
+                selectionStillExists = true;
+                break;
+            }
+        }
+
+        if (!selectionStillExists)
+        {
+            selectedScenePath.clear();
+        }
+
+        // Select the currently loaded scene.
+        if (!currentScenePath.empty())
+        {
+            const std::filesystem::path currentPath(
+                currentScenePath
+            );
+
+            for (const auto& path : savedScenes)
+            {
+                if (path == currentPath)
+                {
+                    selectedScenePath = path;
+                    break;
+                }
+            }
+        }
+
+        sceneStorageInitialized = true;
+    }
+
+    // =============================================================
+    // SAVE SCENE
+    // =============================================================
+
+    bool Editor::saveCurrentScene(World& world, bool saveAs)
+    {
+        std::filesystem::path targetPath;
+
+        // Save As, or save an untitled scene.
+        if (saveAs || currentScenePath.empty())
+        {
+            std::string errorMessage;
+
+            if (!sceneStorage.getScenePath(
+                    sceneName,
+                    targetPath,
+                    &errorMessage))
+            {
+                sceneStatusMessage =
+                    "Invalid scene name: " + errorMessage;
+
+                return false;
+            }
+
+            // Prevent accidental overwriting of another scene.
+            if (std::filesystem::exists(targetPath) &&
+                targetPath !=
+                    std::filesystem::path(currentScenePath))
+            {
+                sceneStatusMessage =
+                    "A scene with this name already exists. "
+                    "Choose another name.";
+
+                return false;
+            }
+        }
+        else
+        {
+            // Save to the currently loaded scene.
+            targetPath = currentScenePath;
+        }
+
+        std::string errorMessage;
+
+        if (!sceneStorage.ensureDirectories(&errorMessage))
+        {
+            sceneStatusMessage =
+                "Storage error: " + errorMessage;
+
+            return false;
+        }
+
+        if (!SceneSerializer::save(
+                world,
+                targetPath.string(),
+                &errorMessage))
+        {
+            sceneStatusMessage =
+                "Save failed: " + errorMessage;
+
+            return false;
+        }
+
+        currentScenePath = targetPath.string();
+
+        // Update the name field to match the saved filename.
+        const std::string name =
+            targetPath.stem().string();
+
+        std::snprintf(
+            sceneName,
+            sizeof(sceneName),
+            "%s",
+            name.c_str()
+        );
+
+        sceneDirty = false;
+
+        sceneStatusMessage =
+            "Scene saved successfully.";
+
+        refreshSceneList();
+
+        return true;
+    }
+
+    // =============================================================
+    // LOAD SCENE
+    // =============================================================
+
+    bool Editor::loadScene(
+        const std::filesystem::path& path,
+        World& world)
+    {
+        std::string errorMessage;
+
+        if (!SceneSerializer::load(
+                path.string(),
+                world,
+                &errorMessage))
+        {
+            sceneStatusMessage =
+                "Load failed: " + errorMessage;
+
+            return false;
+        }
+
+        currentScenePath = path.string();
+
+        selectedScenePath = path;
+
+        sceneDirty = false;
+
+        selectedObjectId = 0;
+
+        // Update the scene name field.
+        std::string name =
+            path.stem().string();
+
+        if (name.size() >= sizeof(sceneName))
+        {
+            name.resize(sizeof(sceneName) - 1);
+        }
+
+        std::snprintf(
+            sceneName,
+            sizeof(sceneName),
+            "%s",
+            name.c_str()
+        );
+
+        sceneStatusMessage =
+            "Scene loaded successfully.";
+
+        refreshSceneList();
+
+        return true;
+    }
+
+    // =============================================================
+    // PENDING SCENE ACTION
+    // =============================================================
+
+    void Editor::performPendingAction(World& world)
+    {
+        if (pendingSceneAction ==
+            PendingSceneAction::NewScene)
+        {
+            world.clear();
+
+            selectedObjectId = 0;
+
+            currentScenePath.clear();
+
+            sceneDirty = false;
+
+            std::snprintf(
+                sceneName,
+                sizeof(sceneName),
+                "%s",
+                "Untitled"
+            );
+
+            sceneStatusMessage =
+                "New empty scene created.";
+        }
+        else if (pendingSceneAction ==
+                 PendingSceneAction::LoadScene)
+        {
+            loadScene(
+                pendingScenePath,
+                world
+            );
+        }
+
+        pendingSceneAction =
+            PendingSceneAction::None;
+
+        pendingScenePath.clear();
+    }
+
     // =============================================================
     // CREATE CUBE
     // =============================================================
 
     void Editor::createCube(World& world)
     {
-        // Reuse an existing cube mesh whenever possible.
+        // Reuse an existing cube mesh if possible.
         if (!cubeMesh)
         {
             for (const auto& object : world.getObjects())
@@ -30,7 +274,7 @@ namespace horizon
             }
         }
 
-        // Create a cube mesh if none exists.
+        // Create a cube mesh if necessary.
         if (!cubeMesh)
         {
             cubeMesh = Mesh::createCube();
@@ -46,6 +290,7 @@ namespace horizon
 
         // Generate a unique object name.
         std::string objectName = "Cube";
+
         unsigned int suffix = 1;
 
         const auto nameExists =
@@ -53,7 +298,8 @@ namespace horizon
             {
                 for (const auto& object : world.getObjects())
                 {
-                    if (object && object->getName() == name)
+                    if (object &&
+                        object->getName() == name)
                     {
                         return true;
                     }
@@ -71,9 +317,10 @@ namespace horizon
         }
 
         // Create the GameObject.
-        GameObject& cube = world.createObject(objectName);
+        GameObject& cube =
+            world.createObject(objectName);
 
-        // Set its Transform.
+        // Transform.
         cube.getTransform().position =
             Vec3(0.0f, 0.0f, -2.0f);
 
@@ -83,17 +330,16 @@ namespace horizon
         cube.getTransform().scale =
             Vec3(0.75f, 0.75f, 0.75f);
 
-        // Set its Material.
+        // Material.
         cube.getMaterial().color =
             Vec3(0.15f, 0.55f, 1.0f);
 
-        // Assign the shared mesh.
+        // Mesh.
         cube.setMesh(cubeMesh);
 
-        // Select the newly created object.
+        // Select the new object.
         selectedObjectId = cube.getId();
 
-        // Creating an object modifies the scene.
         sceneDirty = true;
 
         sceneStatusMessage =
@@ -106,84 +352,95 @@ namespace horizon
 
     void Editor::render(World& world)
     {
+        // Initialize scene storage on first frame.
+        if (!sceneStorageInitialized)
+        {
+            refreshSceneList();
+        }
+
         // ---------------------------------------------------------
         // SCENE MANAGEMENT
         // ---------------------------------------------------------
 
         ImGui::SetNextWindowSize(
-            ImVec2(360.0f, 220.0f),
+            ImVec2(380.0f, 430.0f),
             ImGuiCond_FirstUseEver
         );
 
         ImGui::Begin("Scene Management");
 
-        ImGui::InputText(
-            "Scene File",
-            scenePath,
-            sizeof(scenePath)
+        ImGui::Text("Saved Scenes");
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Refresh"))
+        {
+            refreshSceneList();
+        }
+
+        // Scene list.
+        ImGui::BeginChild(
+            "SceneBrowser",
+            ImVec2(0.0f, 150.0f),
+            true
         );
 
-        // Save Scene.
-        if (ImGui::Button("Save Scene"))
+        if (savedScenes.empty())
         {
-            std::string errorMessage;
+            ImGui::TextDisabled(
+                "No saved scenes yet."
+            );
+        }
 
-            if (SceneSerializer::save(
-                    world,
-                    scenePath,
-                    &errorMessage))
+        for (const auto& path : savedScenes)
+        {
+            const std::string filename =
+                path.filename().string();
+
+            const std::string label =
+                filename + "##" + path.string();
+
+            const bool selected =
+                selectedScenePath == path;
+
+            if (ImGui::Selectable(
+                    label.c_str(),
+                    selected))
             {
-                currentScenePath = scenePath;
+                selectedScenePath = path;
+            }
+        }
 
-                sceneDirty = false;
+        ImGui::EndChild();
 
+        // Load Selected.
+        if (ImGui::Button("Load Selected"))
+        {
+            if (selectedScenePath.empty())
+            {
                 sceneStatusMessage =
-                    "Scene saved successfully.";
+                    "Select a scene first.";
             }
             else
             {
-                sceneStatusMessage =
-                    "Save failed: " + errorMessage;
+                pendingScenePath =
+                    selectedScenePath;
+
+                pendingSceneAction =
+                    PendingSceneAction::LoadScene;
+
+                if (sceneDirty)
+                {
+                    showUnsavedChangesPopup = true;
+                }
+                else
+                {
+                    performPendingAction(world);
+                }
             }
         }
 
         ImGui::SameLine();
-
-        // Load Scene.
-        if (ImGui::Button("Load Scene"))
-        {
-            pendingSceneAction =
-                PendingSceneAction::LoadScene;
-
-            if (sceneDirty)
-            {
-                showUnsavedChangesPopup = true;
-            }
-            else
-            {
-                std::string errorMessage;
-
-                if (SceneSerializer::load(
-                        scenePath,
-                        world,
-                        &errorMessage))
-                {
-                    currentScenePath = scenePath;
-
-                    sceneDirty = false;
-
-                    selectedObjectId = 0;
-
-                    sceneStatusMessage =
-                        "Scene loaded successfully.";
-                }
-                else
-                {
-                    sceneStatusMessage =
-                        "Load failed: " + errorMessage;
-                }
-            }
-        }
 
         // New Scene.
         if (ImGui::Button("New Scene"))
@@ -197,27 +454,41 @@ namespace horizon
             }
             else
             {
-                world.clear();
-
-                selectedObjectId = 0;
-
-                currentScenePath.clear();
-
-                sceneDirty = false;
-
-                sceneStatusMessage =
-                    "New empty scene created.";
+                performPendingAction(world);
             }
         }
 
         ImGui::Separator();
 
-        // Scene status.
+        // Scene name.
+        ImGui::InputText(
+            "Scene Name",
+            sceneName,
+            sizeof(sceneName)
+        );
+
+        // Save Scene.
+        if (ImGui::Button("Save Scene"))
+        {
+            saveCurrentScene(world, false);
+        }
+
+        ImGui::SameLine();
+
+        // Save As.
+        if (ImGui::Button("Save As"))
+        {
+            saveCurrentScene(world, true);
+        }
+
+        ImGui::Separator();
+
+        // Status.
         if (sceneDirty)
         {
             ImGui::TextColored(
                 ImVec4(1.0f, 0.8f, 0.2f, 1.0f),
-                "Status: Unsaved changes"
+                "Status: Unsaved Changes"
             );
         }
         else
@@ -227,6 +498,7 @@ namespace horizon
             );
         }
 
+        // Current scene.
         if (!currentScenePath.empty())
         {
             ImGui::TextWrapped(
@@ -241,6 +513,7 @@ namespace horizon
             );
         }
 
+        // Status message.
         if (!sceneStatusMessage.empty())
         {
             ImGui::TextWrapped(
@@ -277,140 +550,27 @@ namespace horizon
 
             ImGui::Separator();
 
-            // Save and Continue.
+            // Save & Continue.
             if (ImGui::Button(
                     "Save & Continue",
                     ImVec2(140.0f, 0.0f)))
             {
-std::string errorMessage;
-
-// When loading another scene, preserve the requested
-// load path and save the current scene separately.
-std::string savePath = scenePath;
-
-if (pendingSceneAction ==
-    PendingSceneAction::LoadScene)
-{
-    savePath = currentScenePath.empty()
-        ? "untitled.hscene"
-        : currentScenePath;
-}
-
-if (SceneSerializer::save(
-        world,
-        savePath,
-        &errorMessage))
-{
-    currentScenePath = savePath;
-
-                    sceneDirty = false;
-
-                    sceneStatusMessage =
-                        "Scene saved successfully.";
-
-                    // Continue with the pending action.
-                    if (pendingSceneAction ==
-                        PendingSceneAction::NewScene)
-                    {
-                        world.clear();
-
-                        selectedObjectId = 0;
-
-                        currentScenePath.clear();
-
-                        sceneDirty = false;
-
-                        sceneStatusMessage =
-                            "New empty scene created.";
-                    }
-                    else if (pendingSceneAction ==
-                        PendingSceneAction::LoadScene)
-                    {
-                        if (SceneSerializer::load(
-                                scenePath,
-                                world,
-                                &errorMessage))
-                        {
-                            currentScenePath = scenePath;
-
-                            sceneDirty = false;
-
-                            selectedObjectId = 0;
-
-                            sceneStatusMessage =
-                                "Scene loaded successfully.";
-                        }
-                        else
-                        {
-                            sceneStatusMessage =
-                                "Load failed: " +
-                                errorMessage;
-                        }
-                    }
-
-                    pendingSceneAction =
-                        PendingSceneAction::None;
+                if (saveCurrentScene(world, false))
+                {
+                    performPendingAction(world);
 
                     ImGui::CloseCurrentPopup();
-                }
-                else
-                {
-                    sceneStatusMessage =
-                        "Save failed: " +
-                        errorMessage;
                 }
             }
 
             ImGui::SameLine();
 
-            // Discard Changes.
+            // Discard.
             if (ImGui::Button(
                     "Discard",
                     ImVec2(100.0f, 0.0f)))
             {
-                if (pendingSceneAction ==
-                    PendingSceneAction::NewScene)
-                {
-                    world.clear();
-
-                    selectedObjectId = 0;
-
-                    currentScenePath.clear();
-
-                    sceneDirty = false;
-
-                    sceneStatusMessage =
-                        "New empty scene created.";
-                }
-                else if (pendingSceneAction ==
-                    PendingSceneAction::LoadScene)
-                {
-                    std::string errorMessage;
-
-                    if (SceneSerializer::load(
-                            scenePath,
-                            world,
-                            &errorMessage))
-                    {
-                        currentScenePath = scenePath;
-
-                        sceneDirty = false;
-
-                        selectedObjectId = 0;
-
-                        sceneStatusMessage =
-                            "Scene loaded successfully.";
-                    }
-                    else
-                    {
-                        sceneStatusMessage =
-                            "Load failed: " +
-                            errorMessage;
-                    }
-                }
-
-                pendingSceneAction =
-                    PendingSceneAction::None;
+                performPendingAction(world);
 
                 ImGui::CloseCurrentPopup();
             }
@@ -424,6 +584,8 @@ if (SceneSerializer::save(
             {
                 pendingSceneAction =
                     PendingSceneAction::None;
+
+                pendingScenePath.clear();
 
                 sceneStatusMessage =
                     "Scene operation cancelled.";
@@ -485,7 +647,7 @@ if (SceneSerializer::save(
             );
         }
 
-        // Display all GameObjects.
+        // GameObject list.
         for (const auto& object : world.getObjects())
         {
             if (!object)
@@ -519,7 +681,7 @@ if (SceneSerializer::save(
 
         ImGui::Begin("Inspector");
 
-        // Find selected object by stable ID.
+        // Find selected object by ID.
         GameObject* selectedObject = nullptr;
 
         for (const auto& object : world.getObjects())
@@ -546,10 +708,7 @@ if (SceneSerializer::save(
             return;
         }
 
-        // ---------------------------------------------------------
-        // GAMEOBJECT INFORMATION
-        // ---------------------------------------------------------
-
+        // GameObject information.
         ImGui::Text("GameObject");
 
         ImGui::Separator();

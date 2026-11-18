@@ -99,6 +99,7 @@ add_executable(Horizon
     src/Scene/World.cpp
     src/Scene/Mesh.cpp
     src/Scene/SceneSerializer.cpp
+    src/Scene/SceneStorage.cpp
 )
 
 target_include_directories(Horizon PRIVATE
@@ -202,6 +203,19 @@ add_executable(SceneSerializerTest
 )
 
 target_include_directories(SceneSerializerTest PRIVATE
+    include
+)
+
+# =====================================
+# SCENE STORAGE TEST
+# =====================================
+
+add_executable(SceneStorageTest
+    tests/SceneStorageTest.cpp
+    src/Scene/SceneStorage.cpp
+)
+
+target_include_directories(SceneStorageTest PRIVATE
     include
 )
 
