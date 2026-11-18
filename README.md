@@ -5,7 +5,7 @@
 <details>
 <summary><strong>Project snapshot</strong></summary>
 
-- **Current version:** 0.14.2
+- **Current version:** 0.14.3
 - **Language:** C++20
 - **Graphics API:** OpenGL 3.3 Core
 - **Editor UI:** Dear ImGui
@@ -52,25 +52,35 @@ Horizon Engine is being designed around these priorities:
 - Change an object's base material colour
 - Reset an object's transform
 
-### Scene serialization — v0.14.2
-- Initial scene-saving/serialization system
+### Scene serialization — v0.14
 - Versioned, human-readable scene file format
-- Saves object IDs and names
-- Saves position, rotation, scale, and material colour
-- Records mesh assignment/presence
-- Validates saved numeric transform and colour values
-- Scene loading and editor-integrated save/load workflow are not implemented yet
+- Saves and loads object IDs and names
+- Saves and restores position, rotation, scale, and material colour
+- Saves and restores cube mesh assignment; meshless objects remain meshless
+- Validates IDs, object counts, file structure, and numeric values
+- Loads into a temporary World and only replaces the existing World after successful validation
+- Rejects malformed, unsupported, duplicate-ID, and missing-file cases with error messages
 
 ## Development history
 
 Progress is documented version by version. Each milestone records the implemented work and its verification status.
 
+### v0.14.3 — Scene Loading and Tests
+- Implemented scene loading for the existing HORIZON_SCENE 1 format.
+- Restores GameObject IDs, names, transforms, material colour, and cube mesh assignments.
+- Preserves automatic ID allocation after loading.
+- Uses a temporary World so failed loads do not destroy the current scene.
+- Rejects invalid/duplicate IDs, malformed records, unsupported mesh types, invalid numeric values, and unexpected trailing data.
+- Added SceneSerializerTest, a standalone automated test executable.
+- **Verification:** Full CMake build succeeded on Windows using MSVC/NMake. All 23 serializer checks passed, including save/load restoration, mesh restoration, automatic IDs, corrupted-file rejection, and preservation of existing Worlds on failure.
+- **Git:** Commit 8387e47 — Horizon Engine 0.14.3: Implement scene loading and tests.
+
 ### v0.14.2 — Scene Serialization
-- Added the initial `SceneSerializer` save system.
+- Added the initial SceneSerializer save system.
 - Writes a versioned scene format with object count and object records.
 - Serializes IDs, names, transforms, material colour, and mesh information.
 - Added serializer source to the CMake build.
-- **Verification:** CMake configure and full build completed successfully on Windows with MSVC/NMake. Runtime save/load validation is still pending; this version implements saving only.
+- **Verification:** CMake configure and full build completed successfully on Windows with MSVC/NMake.
 
 ### v0.14.1 — Stable GameObject IDs
 - Added stable numeric IDs to GameObjects.
@@ -94,8 +104,9 @@ Earlier versions established the engine's window, input, camera, shader, mesh, m
 
 Planned milestones (subject to change):
 
-- **0.14.3:** Scene loading
-- **0.14.x:** Editor-integrated scene save/load and stability improvements
+- **0.14.4:** Editor-integrated New/Save/Load scene operations and unsaved-change safeguards
+- **0.14.5:** Scene workflow stability and additional validation tests
+- **0.14.6:** Basic profiler (FPS, frame time, object count, draw calls)
 - **0.15:** Asset management and model importing
 - **0.16:** Expanded scene editor workflows
 - **0.17:** Lighting and graphics settings
@@ -123,8 +134,7 @@ Planned milestones (subject to change):
 - An internet connection for CMake FetchContent dependencies on the first configure
 
 ### Build
-
-Open an **x64 Native Tools Command Prompt for Visual Studio**, then run:
+Open an x64 Native Tools Command Prompt for Visual Studio, then run:
 
 ```bat
 git clone https://github.com/AdityaBisht-Coder/HorizonEngine.git
@@ -135,22 +145,26 @@ cmake --build build
 ```
 
 ### Run
-
 ```bat
 build\Horizon.exe
 ```
 
+### Run the scene serializer tests
+```bat
+build\SceneSerializerTest.exe
+```
+
 ## Development status
 
-Horizon Engine is an active experimental project. Version 0.14 focuses on scene data foundations: stable object IDs and serialization. APIs, editor workflows, and internal architecture may change as development continues.
+Horizon Engine is an active experimental project. Version 0.14 focuses on scene data foundations: stable object IDs, serialization, loading, and validation. APIs, editor workflows, and internal architecture may change as development continues.
 
 This is not yet a production-ready game engine. The current desktop renderer uses OpenGL 3.3 and GLFW; mobile support is a future architectural goal, not an implemented export target.
 
 ## Licensing
 
-The repository currently includes the **MIT License** in `LICENSE`.
+The repository currently includes the MIT License in LICENSE.
 
-A separate **Horizon Fair Use License (HFUL)** draft is also available for discussion and legal review. It is a proposal only and does not replace or modify the current MIT license.
+A separate Horizon Fair Use License (HFUL) draft is also available for discussion and legal review. It is a proposal only and does not replace or modify the current MIT license.
 
 ## Repository
 
