@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include "horizon/Scene/Transform.hpp"
@@ -7,15 +6,21 @@
 
 #include <string>
 #include <memory>
+#include <cstdint>
 
 namespace horizon
 {
     class GameObject
     {
     public:
-        explicit GameObject(const std::string& name);
+        GameObject(
+            const std::string& name,
+            std::uint64_t id
+        );
 
         const std::string& getName() const;
+
+        std::uint64_t getId() const;
 
         Transform& getTransform();
         const Transform& getTransform() const;
@@ -29,6 +34,7 @@ namespace horizon
 
     private:
         std::string name;
+        std::uint64_t id;
 
         Transform transform;
         Material material;

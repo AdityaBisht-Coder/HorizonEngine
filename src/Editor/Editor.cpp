@@ -1,3 +1,4 @@
+
 #include "horizon/Editor/Editor.hpp"
 
 #include "horizon/Scene/GameObject.hpp"
@@ -9,6 +10,10 @@
 
 namespace horizon
 {
+    // =============================================================
+    // CREATE CUBE
+    // =============================================================
+
     void Editor::createCube(World& world)
     {
         // Reuse an existing cube mesh whenever possible.
@@ -24,6 +29,7 @@ namespace horizon
             }
         }
 
+        // Create a cube mesh if none exists.
         if (!cubeMesh)
         {
             cubeMesh = Mesh::createCube();
@@ -34,11 +40,12 @@ namespace horizon
             return;
         }
 
-        // Generate a name that is unique in the current World.
+        // Generate a unique object name.
         std::string objectName = "Cube";
         unsigned int suffix = 1;
 
-        const auto nameExists = [&world](const std::string& name)
+        const auto nameExists =
+            [&world](const std::string& name)
         {
             for (const auto& object : world.getObjects())
             {
@@ -53,26 +60,44 @@ namespace horizon
 
         while (nameExists(objectName))
         {
-            objectName = "Cube_" + std::to_string(suffix);
+            objectName =
+                "Cube_" + std::to_string(suffix);
+
             ++suffix;
         }
 
+        // Create the GameObject.
         GameObject& cube = world.createObject(objectName);
 
-        cube.getTransform().position = Vec3(0.0f, 0.0f, -2.0f);
-        cube.getTransform().rotation = Vec3(0.0f, 0.0f, 0.0f);
-        cube.getTransform().scale = Vec3(0.75f, 0.75f, 0.75f);
+        // Set its Transform.
+        cube.getTransform().position =
+            Vec3(0.0f, 0.0f, -2.0f);
 
-        cube.getMaterial().color = Vec3(0.15f, 0.55f, 1.0f);
+        cube.getTransform().rotation =
+            Vec3(0.0f, 0.0f, 0.0f);
+
+        cube.getTransform().scale =
+            Vec3(0.75f, 0.75f, 0.75f);
+
+        // Set its Material.
+        cube.getMaterial().color =
+            Vec3(0.15f, 0.55f, 1.0f);
+
+        // Assign the shared mesh.
         cube.setMesh(cubeMesh);
 
-        selectedObjectName = objectName;
+        // Select the newly created object by its permanent ID.
+        selectedObjectId = cube.getId();
     }
+
+    // =============================================================
+    // EDITOR RENDER
+    // =============================================================
 
     void Editor::render(World& world)
     {
         // ---------------------------------------------------------
-        // Scene Hierarchy
+        // SCENE HIERARCHY
         // ---------------------------------------------------------
 
         ImGui::SetNextWindowSize(
@@ -84,9 +109,12 @@ namespace horizon
 
         ImGui::Text(
             "Objects: %llu",
-            static_cast<unsigned long long>(world.getObjectCount())
+            static_cast<unsigned long long>(
+                world.getObjectCount()
+            )
         );
 
+        // Create Cube button.
         if (ImGui::Button("Create Cube"))
         {
             createCube(world);
@@ -94,20 +122,26 @@ namespace horizon
 
         ImGui::SameLine();
 
-        if (!selectedObjectName.empty() &&
+        // Delete Selected button.
+        if (selectedObjectId != 0 &&
             ImGui::Button("Delete Selected"))
         {
-            world.removeObject(selectedObjectName);
-            selectedObjectName.clear();
+            world.removeObject(selectedObjectId);
+
+            selectedObjectId = 0;
         }
 
         ImGui::Separator();
 
+        // Empty scene message.
         if (world.getObjectCount() == 0)
         {
-            ImGui::TextDisabled("The scene is empty.");
+            ImGui::TextDisabled(
+                "The scene is empty."
+            );
         }
 
+        // Display all GameObjects.
         for (const auto& object : world.getObjects())
         {
             if (!object)
@@ -115,20 +149,25 @@ namespace horizon
                 continue;
             }
 
-            const std::string& name = object->getName();
+            // ImGui uses the hidden ID to distinguish
+            // objects even if their names are identical.
+            const std::string label =
+                object->getName() +
+                "##" +
+                std::to_string(object->getId());
 
             if (ImGui::Selectable(
-                    name.c_str(),
-                    selectedObjectName == name))
+                    label.c_str(),
+                    selectedObjectId == object->getId()))
             {
-                selectedObjectName = name;
+                selectedObjectId = object->getId();
             }
         }
 
         ImGui::End();
 
         // ---------------------------------------------------------
-        // Inspector
+        // INSPECTOR
         // ---------------------------------------------------------
 
         ImGui::SetNextWindowSize(
@@ -138,33 +177,63 @@ namespace horizon
 
         ImGui::Begin("Inspector");
 
+        // Find the selected object using its stable ID.
         GameObject* selectedObject = nullptr;
 
         for (const auto& object : world.getObjects())
         {
-            if (object && object->getName() == selectedObjectName)
+            if (object &&
+                object->getId() == selectedObjectId)
             {
                 selectedObject = object.get();
                 break;
             }
         }
 
+        // No valid selection.
         if (selectedObject == nullptr)
         {
-            ImGui::TextDisabled("Select an object in the hierarchy.");
+            selectedObjectId = 0;
+
+            ImGui::TextDisabled(
+                "Select an object in the hierarchy."
+            );
+
             ImGui::End();
+
             return;
         }
 
+        // ---------------------------------------------------------
+        // GAMEOBJECT INFORMATION
+        // ---------------------------------------------------------
+
         ImGui::Text("GameObject");
+
         ImGui::Separator();
-        ImGui::Text("%s", selectedObject->getName().c_str());
+
+        ImGui::Text(
+            "Name: %s",
+            selectedObject->getName().c_str()
+        );
+
+        ImGui::Text(
+            "ID: %llu",
+            static_cast<unsigned long long>(
+                selectedObject->getId()
+            )
+        );
+
+        // ---------------------------------------------------------
+        // TRANSFORM INSPECTOR
+        // ---------------------------------------------------------
 
         if (ImGui::CollapsingHeader(
                 "Transform",
                 ImGuiTreeNodeFlags_DefaultOpen))
         {
-            auto& transform = selectedObject->getTransform();
+            auto& transform =
+                selectedObject->getTransform();
 
             ImGui::DragFloat3(
                 "Position",
@@ -186,19 +255,30 @@ namespace horizon
                 100.0f
             );
 
+            // Reset Transform.
             if (ImGui::Button("Reset Transform"))
             {
-                transform.position = Vec3(0.0f, 0.0f, 0.0f);
-                transform.rotation = Vec3(0.0f, 0.0f, 0.0f);
-                transform.scale = Vec3(1.0f, 1.0f, 1.0f);
+                transform.position =
+                    Vec3(0.0f, 0.0f, 0.0f);
+
+                transform.rotation =
+                    Vec3(0.0f, 0.0f, 0.0f);
+
+                transform.scale =
+                    Vec3(1.0f, 1.0f, 1.0f);
             }
         }
+
+        // ---------------------------------------------------------
+        // MATERIAL INSPECTOR
+        // ---------------------------------------------------------
 
         if (ImGui::CollapsingHeader(
                 "Material",
                 ImGuiTreeNodeFlags_DefaultOpen))
         {
-            auto& material = selectedObject->getMaterial();
+            auto& material =
+                selectedObject->getMaterial();
 
             ImGui::ColorEdit3(
                 "Base Color",
@@ -206,11 +286,17 @@ namespace horizon
             );
         }
 
+        // ---------------------------------------------------------
+        // MESH INFORMATION
+        // ---------------------------------------------------------
+
         ImGui::Separator();
 
         ImGui::Text(
             "Mesh: %s",
-            selectedObject->getMesh() ? "Assigned" : "None"
+            selectedObject->getMesh()
+                ? "Assigned"
+                : "None"
         );
 
         ImGui::End();

@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include "horizon/Scene/GameObject.hpp"
@@ -6,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <cstdint>
 
 namespace horizon
 {
@@ -18,23 +18,29 @@ namespace horizon
         World(const World&) = delete;
         World& operator=(const World&) = delete;
 
-        // Create and add an object to the world.
         GameObject& createObject(const std::string& name);
 
-        // Remove an object by its name.
+        // Create an object with a specific ID.
+        // This will be useful when loading saved scenes.
+        GameObject& createObject(
+            const std::string& name,
+            std::uint64_t id
+        );
+
         bool removeObject(const std::string& name);
 
-        // Remove every object.
+        bool removeObject(std::uint64_t id);
+
         void clear();
 
-        // Access all objects.
         const std::vector<std::unique_ptr<GameObject>>&
             getObjects() const;
 
-        // Get the number of objects.
         std::size_t getObjectCount() const;
 
     private:
         std::vector<std::unique_ptr<GameObject>> objects;
+
+        std::uint64_t nextObjectId = 1;
     };
 }

@@ -1,9 +1,11 @@
+
 #pragma once
 
 #include "horizon/Scene/World.hpp"
 
 #include <memory>
 #include <string>
+#include <cstdint>
 
 namespace horizon
 {
@@ -24,7 +26,10 @@ namespace horizon
     private:
         void createCube(World& world);
 
-        std::string selectedObjectName;
+        // Stable selection using GameObject IDs.
+        std::uint64_t selectedObjectId = 0;
+
+        // Shared cube mesh used by editor-created objects.
         std::shared_ptr<Mesh> cubeMesh;
     };
 }

@@ -97,6 +97,7 @@ add_executable(Horizon
     src/Scene/GameObject.cpp
     src/Scene/World.cpp
     src/Scene/Mesh.cpp
+    src/Scene/SceneSerializer.cpp
 )
 
 target_include_directories(Horizon PRIVATE
