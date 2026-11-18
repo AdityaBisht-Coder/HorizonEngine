@@ -5,7 +5,7 @@
 <details>
 <summary><strong>Project snapshot</strong></summary>
 
-- **Current version:** 0.14.3
+- **Current version:** 0.14.4
 - **Language:** C++20
 - **Graphics API:** OpenGL 3.3 Core
 - **Editor UI:** Dear ImGui
@@ -52,7 +52,7 @@ Horizon Engine is being designed around these priorities:
 - Change an object's base material colour
 - Reset an object's transform
 
-### Scene serialization — v0.14
+### Scene serialization and management — v0.14
 - Versioned, human-readable scene file format
 - Saves and loads object IDs and names
 - Saves and restores position, rotation, scale, and material colour
@@ -60,10 +60,23 @@ Horizon Engine is being designed around these priorities:
 - Validates IDs, object counts, file structure, and numeric values
 - Loads into a temporary World and only replaces the existing World after successful validation
 - Rejects malformed, unsupported, duplicate-ID, and missing-file cases with error messages
+- Editor-integrated New Scene, Save Scene, and Load Scene operations
+- Scene file path input and current-scene/status display
+- Unsaved-change protection with Save & Continue, Discard, and Cancel options
+- Tracks scene edits such as object creation/deletion, transform changes, and material colour changes
 
 ## Development history
 
 Progress is documented version by version. Each milestone records the implemented work and its verification status.
+
+### v0.14.4 — Editor Scene Management
+- Integrated New Scene, Save Scene, and Load Scene into the editor.
+- Added a scene file path input and current scene/status display.
+- Added unsaved-change safeguards before New or Load operations, with Save & Continue, Discard, and Cancel.
+- Tracks object creation/deletion, transform edits, and material colour changes as unsaved scene changes.
+- Save/load operations use the existing scene serializer and safe loading behaviour.
+- **Verification:** Full CMake build succeeded on Windows using MSVC/NMake. Manually tested creating, saving, loading, starting a new scene, and unsaved-change prompts. Saved scenes were successfully loaded again after shutting down and restarting Horizon.
+- **Git:** Implementation committed locally; push pending.
 
 ### v0.14.3 — Scene Loading and Tests
 - Implemented scene loading for the existing HORIZON_SCENE 1 format.
@@ -104,7 +117,6 @@ Earlier versions established the engine's window, input, camera, shader, mesh, m
 
 Planned milestones (subject to change):
 
-- **0.14.4:** Editor-integrated New/Save/Load scene operations and unsaved-change safeguards
 - **0.14.5:** Scene workflow stability and additional validation tests
 - **0.14.6:** Basic profiler (FPS, frame time, object count, draw calls)
 - **0.15:** Asset management and model importing
@@ -146,17 +158,17 @@ cmake --build build
 
 ### Run
 ```bat
-build\Horizon.exe
+build\\Horizon.exe
 ```
 
 ### Run the scene serializer tests
 ```bat
-build\SceneSerializerTest.exe
+build\\SceneSerializerTest.exe
 ```
 
 ## Development status
 
-Horizon Engine is an active experimental project. Version 0.14 focuses on scene data foundations: stable object IDs, serialization, loading, and validation. APIs, editor workflows, and internal architecture may change as development continues.
+Horizon Engine is an active experimental project. Version 0.14 focuses on scene data foundations and editor scene workflows: stable object IDs, serialization, loading, validation, and scene management. APIs, editor workflows, and internal architecture may change as development continues.
 
 This is not yet a production-ready game engine. The current desktop renderer uses OpenGL 3.3 and GLFW; mobile support is a future architectural goal, not an implemented export target.
 
