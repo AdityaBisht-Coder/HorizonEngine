@@ -42,7 +42,7 @@ namespace horizon
             return true;
         }
 
-        std::cout << "Initializing Horizon Engine 0.13...\n";
+        std::cout << "Initializing Horizon Engine 0.14.5...\n";
 
         // 1. Create the window and OpenGL context.
         if (!window.create(width, height, title))
@@ -339,7 +339,7 @@ namespace horizon
 
                 // Footer.
                 const char* footer =
-                    "Horizon Engine 0.13  |  Windows";
+                    "Horizon Engine 0.14.5  |  Windows";
 
                 const ImVec2 footerSize =
                     ImGui::CalcTextSize(footer);
@@ -519,7 +519,7 @@ namespace horizon
         initialized = true;
         running = true;
 
-        std::cout << "\nHorizon Engine 0.13 initialized successfully!\n";
+        std::cout << "\nHorizon Engine 0.14.5 initialized successfully!\n";
         std::cout << "Horizon Editor initialized!\n";
 
         return true;
@@ -534,7 +534,7 @@ namespace horizon
         }
 
         std::cout << "\n================================\n";
-        std::cout << "     HORIZON ENGINE 0.13\n";
+        std::cout << "     HORIZON ENGINE 0.14.5\n";
         std::cout << "================================\n";
         std::cout << "WASD       - Move camera (when captured)\n";
         std::cout << "Mouse      - Look around (when captured)\n";
