@@ -1,3 +1,4 @@
+
 #include "horizon/Scene/World.hpp"
 
 #include <algorithm>
@@ -91,6 +92,13 @@ namespace horizon
         objects.clear();
 
         nextObjectId = 1;
+    }
+
+    void World::swap(World& other) noexcept
+    {
+        objects.swap(other.objects);
+
+        std::swap(nextObjectId, other.nextObjectId);
     }
 
     const std::vector<std::unique_ptr<GameObject>>&

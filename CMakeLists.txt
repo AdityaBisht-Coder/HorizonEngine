@@ -1,6 +1,7 @@
+
 cmake_minimum_required(VERSION 3.20)
 
-project(HorizonEngine VERSION 0.13.0 LANGUAGES C CXX)
+project(HorizonEngine VERSION 0.14.4 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -187,7 +188,25 @@ target_include_directories(CameraTest PRIVATE
 )
 
 # =====================================
+# SCENE SERIALIZER TEST
+# =====================================
+
+add_executable(SceneSerializerTest
+    tests/SceneSerializerTest.cpp
+
+    src/Scene/Transform.cpp
+    src/Scene/GameObject.cpp
+    src/Scene/World.cpp
+    src/Scene/Mesh.cpp
+    src/Scene/SceneSerializer.cpp
+)
+
+target_include_directories(SceneSerializerTest PRIVATE
+    include
+)
+
+# =====================================
 # CONFIGURATION COMPLETE
 # =====================================
 
-message(STATUS "Horizon Engine 0.13 configuration complete!")
+message(STATUS "Horizon Engine configuration complete!")

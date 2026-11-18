@@ -1,3 +1,4 @@
+
 #pragma once
 
 #include "horizon/Scene/GameObject.hpp"
@@ -21,7 +22,7 @@ namespace horizon
         GameObject& createObject(const std::string& name);
 
         // Create an object with a specific ID.
-        // This will be useful when loading saved scenes.
+        // This is used when loading saved scenes.
         GameObject& createObject(
             const std::string& name,
             std::uint64_t id
@@ -32,6 +33,9 @@ namespace horizon
         bool removeObject(std::uint64_t id);
 
         void clear();
+
+        // Exchange contents with another World.
+        void swap(World& other) noexcept;
 
         const std::vector<std::unique_ptr<GameObject>>&
             getObjects() const;
