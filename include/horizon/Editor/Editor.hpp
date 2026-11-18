@@ -26,10 +26,30 @@ namespace horizon
     private:
         void createCube(World& world);
 
+        enum class PendingSceneAction
+        {
+            None,
+            NewScene,
+            LoadScene
+        };
+
         // Stable selection using GameObject IDs.
         std::uint64_t selectedObjectId = 0;
 
         // Shared cube mesh used by editor-created objects.
         std::shared_ptr<Mesh> cubeMesh;
+
+        // Scene management.
+        char scenePath[512] = "scene.hscene";
+
+        std::string currentScenePath;
+        std::string sceneStatusMessage;
+
+        bool sceneDirty = false;
+
+        PendingSceneAction pendingSceneAction =
+            PendingSceneAction::None;
+
+        bool showUnsavedChangesPopup = false;
     };
 }
