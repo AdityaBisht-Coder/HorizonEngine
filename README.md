@@ -5,7 +5,7 @@
 <details>
 <summary><strong>Project snapshot</strong></summary>
 
-- **Current version:** 0.14.5
+- **Current version:** 0.14.6
 - **Language:** C++20
 - **Graphics API:** OpenGL 3.3 Core
 - **Editor UI:** Dear ImGui
@@ -75,11 +75,29 @@
 - Unsaved-change protection with Save & Continue, Discard, and Cancel
 - Tracks scene edits including object creation, deletion, transforms, and material changes
 
+### Atomic Scene Saving & Regression Testing — v0.14.6
+- Saves scenes through a temporary file before replacing the destination
+- Replaces existing scene files using platform-specific replacement operations
+- Checks write and replacement failures
+- Cleans up temporary files after failed saves
+- Preserves the existing destination file when saving fails before replacement
+- Adds regression tests for successful saves, replacement, failure handling, cleanup, and load safety
+- Integrates selected non-interactive tests with CTest
+
 Default scene storage location:
 
 `%LOCALAPPDATA%\HorizonEngine\Scenes\`
 
 ## Development history
+
+### v0.14.6 — Atomic Scene Saving & Regression Testing
+- Implemented atomic scene saving using a temporary file in the destination directory.
+- Added checked file writing and platform-specific destination replacement.
+- Added temporary-file cleanup on failure.
+- Improved save failure handling to protect existing scene data.
+- Expanded SceneSerializer regression tests to cover replacement, failure cases, cleanup, malformed files, and preservation of the active World.
+- Integrated CameraTest, SceneSerializerTest, and SceneStorageTest with CTest.
+- **Verification:** CMake build succeeded. SceneSerializerTest passed its 32 checks, and all 3 registered CTest tests passed.
 
 ### v0.14.5 — Scene Browser & Automatic Storage
 - Added SceneStorage for automatic user data directory management.
@@ -133,7 +151,7 @@ Earlier versions established the engine's window, input, camera, shader, mesh, m
 
 Planned milestones (subject to change):
 
-- **0.14.6:** Basic profiler — FPS, frame time, object count, and draw calls
+- **Next milestone:** Basic profiler — FPS, frame time, object count, and draw calls
 - **0.15:** Asset management and model importing
 - **0.16:** Expanded scene editor workflows
 - **0.17:** Lighting and graphics settings
@@ -178,16 +196,21 @@ cmake --build build
 build\Horizon.exe
 ```
 
-### Run tests
+### Run automated tests
+
+```bat
+ctest --test-dir build --output-on-failure
+```
+
+To run the serializer test directly:
 
 ```bat
 build\SceneSerializerTest.exe
-build\SceneStorageTest.exe
 ```
 
 ## Development status
 
-Horizon Engine is an active experimental project. Version 0.14 focuses on scene serialization, validation, storage, and editor scene workflows.
+Horizon Engine is an active experimental project. Version 0.14.6 focuses on scene reliability, atomic saving, regression testing, and editor scene workflows.
 
 This is **not yet a production-ready game engine**. APIs, editor workflows, and internal architecture may change as development continues. The current renderer uses OpenGL 3.3 and GLFW. Mobile support is a future architectural goal, not an implemented export target.
 

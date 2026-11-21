@@ -1,7 +1,7 @@
 ﻿
 cmake_minimum_required(VERSION 3.20)
 
-project(HorizonEngine VERSION 0.14.5 LANGUAGES C CXX)
+project(HorizonEngine VERSION 0.14.6 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
