@@ -11,6 +11,129 @@
 #include <memory>
 #include <utility>
 
+#include <atomic>
+#include <chrono>
+#include <cstdio>
+#include <cstring>
+#include <cerrno>
+#include <filesystem>
+#include <system_error>
+
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
+
+// =============================================================
+// TEMPORARY FILE HELPERS
+// =============================================================
+
+namespace
+{
+    class TemporaryFileCleanup
+    {
+    public:
+        explicit TemporaryFileCleanup(
+            const std::filesystem::path& filePath
+        )
+            : path(filePath)
+        {
+        }
+
+        ~TemporaryFileCleanup()
+        {
+            if (!keepFile)
+            {
+                std::error_code error;
+                std::filesystem::remove(path, error);
+            }
+        }
+
+        void release()
+        {
+            keepFile = true;
+        }
+
+    private:
+        std::filesystem::path path;
+        bool keepFile = false;
+    };
+
+    std::filesystem::path makeTemporaryPath(
+        const std::filesystem::path& destination
+    )
+    {
+        static std::atomic<std::uint64_t> counter{ 0 };
+
+        const auto timestamp =
+            std::chrono::steady_clock::now()
+                .time_since_epoch()
+                .count();
+
+        std::filesystem::path temporary = destination;
+
+        temporary +=
+            ".tmp-" +
+            std::to_string(timestamp) +
+            "-" +
+            std::to_string(
+                counter.fetch_add(
+                    1,
+                    std::memory_order_relaxed
+                )
+            );
+
+        return temporary;
+    }
+
+    bool replaceFileAtomically(
+        const std::filesystem::path& temporary,
+        const std::filesystem::path& destination,
+        std::string& errorMessage
+    )
+    {
+#ifdef _WIN32
+
+        if (MoveFileExW(
+                temporary.c_str(),
+                destination.c_str(),
+                MOVEFILE_REPLACE_EXISTING |
+                MOVEFILE_WRITE_THROUGH))
+        {
+            return true;
+        }
+
+        const DWORD errorCode = GetLastError();
+
+        errorMessage =
+            "Could not replace scene file: " +
+            std::system_category().message(
+                static_cast<int>(errorCode)
+            );
+
+        return false;
+
+#else
+
+        if (std::rename(
+                temporary.string().c_str(),
+                destination.string().c_str()) == 0)
+        {
+            return true;
+        }
+
+        errorMessage =
+            "Could not replace scene file: " +
+            std::string(std::strerror(errno));
+
+        return false;
+
+#endif
+    }
+}
+
 namespace horizon
 {
     // =============================================================
@@ -22,7 +145,8 @@ namespace horizon
         const std::string& filepath,
         std::string* errorMessage)
     {
-        const auto fail = [errorMessage](const std::string& message)
+        const auto fail = [errorMessage](
+            const std::string& message)
         {
             if (errorMessage)
             {
@@ -37,11 +161,23 @@ namespace horizon
             return fail("Scene filepath is empty.");
         }
 
-        std::ofstream file(filepath);
+        const std::filesystem::path destination(filepath);
+
+        const std::filesystem::path temporary =
+            makeTemporaryPath(destination);
+
+        TemporaryFileCleanup cleanup(temporary);
+
+        std::ofstream file(
+            temporary,
+            std::ios::out | std::ios::trunc
+        );
 
         if (!file.is_open())
         {
-            return fail("Could not open scene file for writing.");
+            return fail(
+                "Could not open temporary scene file for writing."
+            );
         }
 
         file << std::setprecision(
@@ -144,9 +280,26 @@ namespace horizon
         if (file.fail())
         {
             return fail(
-                "Failed to close the scene file."
+                "Failed to close the temporary scene file."
             );
         }
+
+        // ---------------------------------------------------------
+        // ATOMIC REPLACEMENT
+        // ---------------------------------------------------------
+
+        std::string replacementError;
+
+        if (!replaceFileAtomically(
+                temporary,
+                destination,
+                replacementError))
+        {
+            return fail(replacementError);
+        }
+
+        // The temporary file has now become the destination.
+        cleanup.release();
 
         if (errorMessage)
         {
@@ -165,7 +318,8 @@ namespace horizon
         World& world,
         std::string* errorMessage)
     {
-        const auto fail = [errorMessage](const std::string& message)
+        const auto fail = [errorMessage](
+            const std::string& message)
         {
             if (errorMessage)
             {

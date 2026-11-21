@@ -1,4 +1,4 @@
-
+﻿
 cmake_minimum_required(VERSION 3.20)
 
 project(HorizonEngine VERSION 0.14.5 LANGUAGES C CXX)
@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(FetchContent)
+include(CTest)
 
 # =====================================
 # GLFW
@@ -218,6 +219,29 @@ add_executable(SceneStorageTest
 target_include_directories(SceneStorageTest PRIVATE
     include
 )
+
+# =====================================
+# AUTOMATED TESTING - CTEST
+# =====================================
+
+if(BUILD_TESTING)
+
+    add_test(
+        NAME CameraTest
+        COMMAND CameraTest
+    )
+
+    add_test(
+        NAME SceneSerializerTest
+        COMMAND SceneSerializerTest
+    )
+
+    add_test(
+        NAME SceneStorageTest
+        COMMAND SceneStorageTest
+    )
+
+endif()
 
 # =====================================
 # CONFIGURATION COMPLETE

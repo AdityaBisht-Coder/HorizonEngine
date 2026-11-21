@@ -6,6 +6,10 @@
 #include <fstream>
 #include <string>
 #include <cstdio>
+#include <filesystem>
+#include <iterator>
+#include <limits>
+#include <system_error>
 
 namespace
 {
@@ -28,6 +32,63 @@ namespace
     {
         return (a - b) < 0.0001f &&
                (b - a) < 0.0001f;
+    }
+
+    std::string readFileContents(const std::string& filepath)
+    {
+        std::ifstream file(filepath, std::ios::binary);
+
+        return std::string(
+            std::istreambuf_iterator<char>(file),
+            std::istreambuf_iterator<char>()
+        );
+    }
+
+    bool hasTemporaryFileFor(const std::string& filepath)
+    {
+        const std::filesystem::path target(filepath);
+
+        const std::filesystem::path directory =
+            target.has_parent_path()
+                ? target.parent_path()
+                : std::filesystem::path(".");
+
+        const std::string prefix =
+            target.filename().string() + ".tmp-";
+
+        std::error_code error;
+
+        std::filesystem::directory_iterator iterator(
+            directory,
+            error
+        );
+
+        const std::filesystem::directory_iterator end;
+
+        if (error)
+        {
+            return false;
+        }
+
+        while (iterator != end)
+        {
+            const std::string filename =
+                iterator->path().filename().string();
+
+            if (filename.rfind(prefix, 0) == 0)
+            {
+                return true;
+            }
+
+            iterator.increment(error);
+
+            if (error)
+            {
+                return false;
+            }
+        }
+
+        return false;
     }
 }
 
@@ -100,6 +161,11 @@ int main()
     {
         std::cerr << "Save error: " << error << "\n";
     }
+
+    check(
+        !hasTemporaryFileFor(scenePath),
+        "Temporary file is removed after successful save"
+    );
 
     // ---------------------------------------------------------
     // LOAD INTO A DIFFERENT WORLD
@@ -230,6 +296,106 @@ int main()
     check(
         nextObject.getId() == 13,
         "Automatic ID continues after loaded IDs"
+    );
+
+    // ---------------------------------------------------------
+    // ATOMIC SAVE TESTS
+    // ---------------------------------------------------------
+
+    World replacementWorld;
+
+    replacementWorld.createObject("Replacement Object", 99);
+
+    const bool replacementSave =
+        SceneSerializer::save(
+            replacementWorld,
+            scenePath,
+            &error
+        );
+
+    check(
+        replacementSave,
+        "Saving over an existing scene succeeds"
+    );
+
+    if (!replacementSave)
+    {
+        std::cerr << "Replacement error: " << error << "\n";
+    }
+
+    World replacementLoaded;
+
+    const bool replacementLoad =
+        SceneSerializer::load(
+            scenePath,
+            replacementLoaded,
+            &error
+        );
+
+    check(
+        replacementLoad,
+        "Replaced scene loads successfully"
+    );
+
+    check(
+        replacementLoaded.getObjectCount() == 1,
+        "Replaced scene contains the new object count"
+    );
+
+    if (replacementLoaded.getObjectCount() == 1)
+    {
+        check(
+            replacementLoaded.getObjects()[0]->getName()
+                == "Replacement Object",
+            "Replaced scene contains the new object"
+        );
+    }
+
+    check(
+        !hasTemporaryFileFor(scenePath),
+        "Temporary file is removed after replacement"
+    );
+
+    // ---------------------------------------------------------
+    // FAILED SAVE MUST PRESERVE ORIGINAL FILE
+    // ---------------------------------------------------------
+
+    const std::string originalContents =
+        readFileContents(scenePath);
+
+    World invalidWorld;
+
+    GameObject& invalidObject =
+        invalidWorld.createObject("Invalid Object");
+
+    invalidObject.getTransform().position.x =
+        std::numeric_limits<float>::quiet_NaN();
+
+    const bool invalidSave =
+        SceneSerializer::save(
+            invalidWorld,
+            scenePath,
+            &error
+        );
+
+    check(
+        !invalidSave,
+        "Saving invalid scene data is rejected"
+    );
+
+    check(
+        !error.empty(),
+        "Failed save provides an error message"
+    );
+
+    check(
+        readFileContents(scenePath) == originalContents,
+        "Failed save preserves the original scene file"
+    );
+
+    check(
+        !hasTemporaryFileFor(scenePath),
+        "Temporary file is cleaned up after failed save"
     );
 
     // ---------------------------------------------------------
