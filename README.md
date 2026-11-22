@@ -216,9 +216,11 @@ This is **not yet a production-ready game engine**. APIs, editor workflows, and 
 
 ## Licensing
 
-The repository currently includes the MIT License in LICENSE.
+The repository currently includes the MIT License in LICENSE. Existing MIT-licensed releases and grants remain governed by the MIT License.
 
-A separate Horizon Fair Use License (HFUL) draft is available for discussion and legal review. It is a proposal only and does not replace or modify the current MIT license.
+A separate [Horizon Engine Revenue License (HERL) v1.0 draft](HERL-DRAFT.md) is available for discussion and professional legal review. HERL is a proposed source-available license with a conditional royalty model for commercial games exceeding its per-game revenue threshold. It is a draft only and does not replace, modify or retroactively restrict the repository's existing MIT license.
+
+No release is governed by HERL unless the project has completed the required rights review and formally identifies that release as distributed under a specific HERL version.
 
 ## Repository
 
